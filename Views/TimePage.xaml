@@ -220,8 +220,8 @@
                                                         </Grid>
                                                         <Slider Minimum="0"
                                                                 Maximum="100"
-                                                                Value="{x:Bind Intensity, Mode=OneWay}"
-                                                                Tag="{x:Bind}"
+                                                                Value="{x:Bind Intensity, Mode=TwoWay}"
+                                                                Tag="{x:Bind Id}"
                                                                 ValueChanged="Slider_ValueChanged"
                                                                 PointerCaptureLost="Slider_PointerCaptureLost" />
                                                     </StackPanel>
