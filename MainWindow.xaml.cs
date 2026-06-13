@@ -1,4 +1,5 @@
 ﻿using App1.Views;
+using Microsoft.UI;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -12,6 +13,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Windows.UI;
 using Windows.Graphics;
 using WinRT.Interop;
 
@@ -59,6 +61,7 @@ namespace App1
             InitializeComponent();
             Title = Strings.Get("AppName");
             ApplyWindowIcon();
+            ConfigureTitleBar();
 
             _settings = Settings.Load();
             _patterns = new ObservableCollection<Pattern>(_settings.Patterns.OrderBy(p => p.Time));
@@ -269,6 +272,76 @@ namespace App1
             string iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "BlueShift.ico");
             if (File.Exists(iconPath))
                 AppWindow.SetIcon(iconPath);
+        }
+
+        private void ConfigureTitleBar()
+        {
+            if (!AppWindowTitleBar.IsCustomizationSupported())
+                return;
+
+            AppWindow.TitleBar.ExtendsContentIntoTitleBar = false;
+            RootGrid.ActualThemeChanged += (_, _) => UpdateTitleBarColors();
+            UpdateTitleBarColors();
+        }
+
+        private void UpdateTitleBarColors()
+        {
+            if (!AppWindowTitleBar.IsCustomizationSupported())
+                return;
+
+            var titleBar = AppWindow.TitleBar;
+            if (IsDarkTheme())
+            {
+                var background = Color.FromArgb(255, 32, 32, 32);
+                var foreground = Colors.White;
+                var inactiveForeground = Color.FromArgb(255, 150, 150, 150);
+                var hoverBackground = Color.FromArgb(255, 56, 56, 56);
+                var pressedBackground = Color.FromArgb(255, 72, 72, 72);
+
+                titleBar.BackgroundColor = background;
+                titleBar.ForegroundColor = foreground;
+                titleBar.InactiveBackgroundColor = background;
+                titleBar.InactiveForegroundColor = inactiveForeground;
+                titleBar.ButtonBackgroundColor = Color.FromArgb(0, 0, 0, 0);
+                titleBar.ButtonForegroundColor = foreground;
+                titleBar.ButtonHoverBackgroundColor = hoverBackground;
+                titleBar.ButtonHoverForegroundColor = foreground;
+                titleBar.ButtonPressedBackgroundColor = pressedBackground;
+                titleBar.ButtonPressedForegroundColor = foreground;
+                titleBar.ButtonInactiveBackgroundColor = Color.FromArgb(0, 0, 0, 0);
+                titleBar.ButtonInactiveForegroundColor = inactiveForeground;
+            }
+            else
+            {
+                var background = Color.FromArgb(255, 243, 243, 243);
+                var foreground = Colors.Black;
+                var inactiveForeground = Color.FromArgb(255, 120, 120, 120);
+                var hoverBackground = Color.FromArgb(255, 230, 230, 230);
+                var pressedBackground = Color.FromArgb(255, 210, 210, 210);
+
+                titleBar.BackgroundColor = background;
+                titleBar.ForegroundColor = foreground;
+                titleBar.InactiveBackgroundColor = background;
+                titleBar.InactiveForegroundColor = inactiveForeground;
+                titleBar.ButtonBackgroundColor = Color.FromArgb(0, 0, 0, 0);
+                titleBar.ButtonForegroundColor = foreground;
+                titleBar.ButtonHoverBackgroundColor = hoverBackground;
+                titleBar.ButtonHoverForegroundColor = foreground;
+                titleBar.ButtonPressedBackgroundColor = pressedBackground;
+                titleBar.ButtonPressedForegroundColor = foreground;
+                titleBar.ButtonInactiveBackgroundColor = Color.FromArgb(0, 0, 0, 0);
+                titleBar.ButtonInactiveForegroundColor = inactiveForeground;
+            }
+        }
+
+        private bool IsDarkTheme()
+        {
+            return RootGrid.ActualTheme switch
+            {
+                ElementTheme.Dark => true,
+                ElementTheme.Light => false,
+                _ => Application.Current?.RequestedTheme == ApplicationTheme.Dark
+            };
         }
 
         private void SyncAutoStartSetting()
