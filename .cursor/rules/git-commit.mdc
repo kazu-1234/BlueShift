@@ -1,0 +1,21 @@
+---
+description: git commit 実行時の厳格ルール（Cursor attribution 完全禁止）
+alwaysApply: true
+---
+
+# git commit 厳格ルール
+
+## 実行形式
+
+- `git commit -m "メッセージ"` または `git commit -F ファイル` のみ使用する
+- **`--trailer` オプションは一切使わない**
+- **`Co-authored-by` / `Made-with: Cursor` をメッセージに含めない**
+
+## 作者
+
+- Author / Committer はローカル Git ユーザー（kazu）のみ
+- cursoragent / Cursor 名義での author 変更は禁止
+
+## 誤付与時
+
+- ユーザーに依頼せず、フック適用後でも trailer が残る場合は `git commit --amend -F ファイル` で除去する

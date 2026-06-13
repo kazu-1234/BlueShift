@@ -1,12 +1,3 @@
 #!/bin/sh
-# Cursor の Co-authored-by / Made-with トレーラーをコミットメッセージから除去する
-COMMIT_MSG_FILE=$1
-[ -f "$COMMIT_MSG_FILE" ] || exit 0
-
-grep -v 'cursoragent@cursor.com' "$COMMIT_MSG_FILE" \
-  | grep -v 'Co-authored-by: Cursor' \
-  | grep -v 'Made-with: Cursor' \
-  > "$COMMIT_MSG_FILE.tmp"
-
-mv "$COMMIT_MSG_FILE.tmp" "$COMMIT_MSG_FILE"
-exit 0
+# prepare-commit-msg でも同じ除去処理を実行（二重防御）
+exec "$(dirname "$0")/commit-msg" "$@"
