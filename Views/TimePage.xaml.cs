@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Navigation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Windows.UI.Core;
 
 namespace App1.Views
 {
@@ -15,7 +16,7 @@ namespace App1.Views
     {
         private AppState? _state;
         private bool _isInitializing;
-        private readonly HashSet<Slider> _pointerDownSliders = new();
+        private readonly HashSet<Slider> _adjustingSliders = new();
         private readonly HashSet<Slider> _wheelAdjustingSliders = new();
         private readonly HashSet<Slider> _bindingSliders = new();
 
@@ -23,7 +24,7 @@ namespace App1.Views
         {
             _pointerPressedHandler = Slider_PointerPressed;
             _pointerReleasedHandler = Slider_PointerReleased;
-            _pointerCaptureLostHandler = Slider_InternalPointerCaptureLost;
+            _pointerCaptureLostHandler = Slider_PointerCaptureLost;
 
             InitializeComponent();
             AttachSliderInteractions(NewIntensitySlider);
@@ -75,32 +76,27 @@ namespace App1.Views
         private void PatternsList_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
         {
             if (args.InRecycleQueue)
+            {
+                if (args.ItemContainer is ListViewItem recycledContainer
+                    && FindDescendantSlider(recycledContainer) is Slider recycledSlider)
+                {
+                    DetachSliderInteractions(recycledSlider);
+                }
+
                 return;
+            }
 
             if (args.ItemContainer is not ListViewItem container)
                 return;
 
-            container.Loaded -= PatternItemContainer_Loaded;
-            container.Loaded += PatternItemContainer_Loaded;
-        }
-
-        private void PatternItemContainer_Loaded(object sender, RoutedEventArgs e)
-        {
-            if (sender is not ListViewItem container)
+            if (args.Phase == 0)
+            {
+                args.RegisterUpdateCallback(PatternsList_ContainerContentChanging);
                 return;
+            }
 
-            container.Loaded -= PatternItemContainer_Loaded;
-
-            if (container.DataContext is not Pattern pattern)
-                return;
-
-            if (FindDescendantSlider(container) is not Slider slider)
-                return;
-
-            _bindingSliders.Add(slider);
-            slider.Tag = pattern.Id;
-            AttachSliderInteractions(slider);
-            _bindingSliders.Remove(slider);
+            if (FindDescendantSlider(container) is Slider slider)
+                AttachSliderInteractions(slider);
         }
 
         private static Slider? FindDescendantSlider(DependencyObject root)
@@ -121,38 +117,41 @@ namespace App1.Views
 
         private void AttachSliderInteractions(Slider slider)
         {
-            slider.RemoveHandler(UIElement.PointerPressedEvent, _pointerPressedHandler);
-            slider.RemoveHandler(UIElement.PointerReleasedEvent, _pointerReleasedHandler);
-            slider.RemoveHandler(UIElement.PointerCaptureLostEvent, _pointerCaptureLostHandler);
-            slider.PointerWheelChanged -= Slider_PointerWheelChanged;
+            DetachSliderInteractions(slider);
 
             // Thumb 等がイベントを処理済みでもドラッグ開始を検知する
             slider.AddHandler(UIElement.PointerPressedEvent, _pointerPressedHandler, true);
             slider.AddHandler(UIElement.PointerReleasedEvent, _pointerReleasedHandler, true);
             slider.AddHandler(UIElement.PointerCaptureLostEvent, _pointerCaptureLostHandler, true);
             slider.PointerWheelChanged += Slider_PointerWheelChanged;
+            slider.ValueChanged += AnySlider_ValueChanged;
+        }
+
+        private void DetachSliderInteractions(Slider slider)
+        {
+            slider.RemoveHandler(UIElement.PointerPressedEvent, _pointerPressedHandler);
+            slider.RemoveHandler(UIElement.PointerReleasedEvent, _pointerReleasedHandler);
+            slider.RemoveHandler(UIElement.PointerCaptureLostEvent, _pointerCaptureLostHandler);
+            slider.PointerWheelChanged -= Slider_PointerWheelChanged;
+            slider.ValueChanged -= AnySlider_ValueChanged;
         }
 
         private void Slider_PointerPressed(object sender, PointerRoutedEventArgs e)
         {
             if (sender is Slider slider)
-                _pointerDownSliders.Add(slider);
+                _adjustingSliders.Add(slider);
         }
 
         private void Slider_PointerReleased(object sender, PointerRoutedEventArgs e)
         {
-            if (sender is not Slider slider)
-                return;
-
-            _pointerDownSliders.Remove(slider);
+            if (sender is Slider slider)
+                EndSliderAdjustment(slider);
         }
 
-        private void Slider_InternalPointerCaptureLost(object sender, PointerRoutedEventArgs e)
+        private void Slider_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
         {
-            if (sender is not Slider slider)
-                return;
-
-            _pointerDownSliders.Remove(slider);
+            if (sender is Slider slider)
+                EndSliderAdjustment(slider);
         }
 
         private readonly PointerEventHandler _pointerPressedHandler;
@@ -258,7 +257,7 @@ namespace App1.Views
             UpdateEmptyState();
         }
 
-        private void Slider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        private void AnySlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         {
             if (_isInitializing || _state == null || sender is not Slider slider)
                 return;
@@ -266,40 +265,32 @@ namespace App1.Views
             if (_bindingSliders.Contains(slider))
                 return;
 
-            ApplySliderGammaFeedback(slider, (int)e.NewValue);
-        }
+            if (ReferenceEquals(slider, NewIntensitySlider))
+                NewIntensityValue.Text = $"{(int)e.NewValue}%";
 
-        private void Slider_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
-        {
-            if (_state == null || sender is not Slider slider) return;
-            if (GetPatternFromSlider(slider) is not Pattern pattern) return;
-
-            _pointerDownSliders.Remove(slider);
-            pattern.Intensity = (int)slider.Value;
-            _state.PersistPatterns();
-            _state.RefreshGamma?.Invoke();
-        }
-
-        private void NewIntensitySlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
-        {
-            NewIntensityValue.Text = $"{(int)e.NewValue}%";
-
-            if (_isInitializing || sender is not Slider slider)
+            if (!IsUserAdjustingSlider(slider))
                 return;
 
+            _adjustingSliders.Add(slider);
             ApplySliderGammaFeedback(slider, (int)e.NewValue);
         }
 
-        private void NewIntensitySlider_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
+        private void EndSliderAdjustment(Slider slider)
         {
-            if (sender is Slider slider)
-                _pointerDownSliders.Remove(slider);
+            if (!_adjustingSliders.Remove(slider))
+                return;
+
+            if (GetPatternFromSlider(slider) is Pattern pattern)
+            {
+                pattern.Intensity = (int)slider.Value;
+                _state?.PersistPatterns();
+            }
 
             _state?.RefreshGamma?.Invoke();
         }
 
         /// <summary>
-        /// マウスドラッグ中のみ一時プレビュー（有効/無効に関わらず画面ガンマを反映）。
+        /// マウス操作中のみ一時プレビュー（有効/無効に関わらず画面ガンマを反映）。
         /// ホイール・ページ表示時のバインドではガンマを変えない。
         /// </summary>
         private void ApplySliderGammaFeedback(Slider slider, int intensity)
@@ -307,8 +298,22 @@ namespace App1.Views
             if (_state == null || _wheelAdjustingSliders.Contains(slider))
                 return;
 
-            if (_pointerDownSliders.Contains(slider))
+            if (IsUserAdjustingSlider(slider))
                 _state.PreviewGamma?.Invoke(intensity);
+        }
+
+        private bool IsUserAdjustingSlider(Slider slider)
+        {
+            if (_wheelAdjustingSliders.Contains(slider))
+                return false;
+
+            return _adjustingSliders.Contains(slider) || IsPrimaryPointerPressed();
+        }
+
+        private static bool IsPrimaryPointerPressed()
+        {
+            var state = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.LeftButton);
+            return state.HasFlag(CoreVirtualKeyStates.Down);
         }
 
         private Pattern? GetPatternFromSlider(Slider slider)
