@@ -244,19 +244,16 @@ namespace App1.Views
         }
 
         /// <summary>
-        /// ドラッグ中は一時プレビュー。ホイール操作時はフィルター無効ならガンマを変えない。
+        /// ドラッグ中は一時プレビュー。ホイール操作時はガンマを変えず強度の数値調整のみ。
         /// </summary>
         private void ApplySliderGammaFeedback(Slider slider, int intensity)
         {
             if (_state == null)
                 return;
 
+            // ホイールはスライダー値の変更のみ（ブルーライトの一時適用なし）
             if (_wheelAdjustingSliders.Contains(slider))
-            {
-                if (_state.IsFilterEnabled && _state.Patterns.Any())
-                    _state.PreviewGamma?.Invoke(intensity);
                 return;
-            }
 
             if (_draggingSliders.Contains(slider))
             {
