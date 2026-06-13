@@ -15,12 +15,16 @@ namespace App1.Views
     {
         private AppState? _state;
         private bool _isInitializing;
-        private readonly HashSet<Slider> _draggingSliders = new();
+        private readonly HashSet<Slider> _pointerDownSliders = new();
         private readonly HashSet<Slider> _wheelAdjustingSliders = new();
         private readonly HashSet<Slider> _bindingSliders = new();
 
         public TimePage()
         {
+            _pointerPressedHandler = Slider_PointerPressed;
+            _pointerReleasedHandler = Slider_PointerReleased;
+            _pointerCaptureLostHandler = Slider_InternalPointerCaptureLost;
+
             InitializeComponent();
             AttachSliderInteractions(NewIntensitySlider);
             PatternsList.ContainerContentChanging += PatternsList_ContainerContentChanging;
@@ -117,28 +121,43 @@ namespace App1.Views
 
         private void AttachSliderInteractions(Slider slider)
         {
-            slider.PointerPressed -= Slider_PointerPressed;
-            slider.PointerCaptureLost -= Slider_DragCaptureLost;
+            slider.RemoveHandler(UIElement.PointerPressedEvent, _pointerPressedHandler);
+            slider.RemoveHandler(UIElement.PointerReleasedEvent, _pointerReleasedHandler);
+            slider.RemoveHandler(UIElement.PointerCaptureLostEvent, _pointerCaptureLostHandler);
             slider.PointerWheelChanged -= Slider_PointerWheelChanged;
 
-            slider.PointerPressed += Slider_PointerPressed;
-            slider.PointerCaptureLost += Slider_DragCaptureLost;
+            // Thumb 等がイベントを処理済みでもドラッグ開始を検知する
+            slider.AddHandler(UIElement.PointerPressedEvent, _pointerPressedHandler, true);
+            slider.AddHandler(UIElement.PointerReleasedEvent, _pointerReleasedHandler, true);
+            slider.AddHandler(UIElement.PointerCaptureLostEvent, _pointerCaptureLostHandler, true);
             slider.PointerWheelChanged += Slider_PointerWheelChanged;
         }
 
         private void Slider_PointerPressed(object sender, PointerRoutedEventArgs e)
         {
             if (sender is Slider slider)
-                _draggingSliders.Add(slider);
+                _pointerDownSliders.Add(slider);
         }
 
-        private void Slider_DragCaptureLost(object sender, PointerRoutedEventArgs e)
+        private void Slider_PointerReleased(object sender, PointerRoutedEventArgs e)
         {
             if (sender is not Slider slider)
                 return;
 
-            _draggingSliders.Remove(slider);
+            _pointerDownSliders.Remove(slider);
         }
+
+        private void Slider_InternalPointerCaptureLost(object sender, PointerRoutedEventArgs e)
+        {
+            if (sender is not Slider slider)
+                return;
+
+            _pointerDownSliders.Remove(slider);
+        }
+
+        private readonly PointerEventHandler _pointerPressedHandler;
+        private readonly PointerEventHandler _pointerReleasedHandler;
+        private readonly PointerEventHandler _pointerCaptureLostHandler;
 
         private void Slider_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
         {
@@ -247,10 +266,7 @@ namespace App1.Views
             if (_bindingSliders.Contains(slider))
                 return;
 
-            if (GetPatternFromSlider(slider) is not Pattern pattern)
-                return;
-
-            ApplySliderGammaFeedback(slider, pattern.Intensity);
+            ApplySliderGammaFeedback(slider, (int)e.NewValue);
         }
 
         private void Slider_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
@@ -258,6 +274,7 @@ namespace App1.Views
             if (_state == null || sender is not Slider slider) return;
             if (GetPatternFromSlider(slider) is not Pattern pattern) return;
 
+            _pointerDownSliders.Remove(slider);
             pattern.Intensity = (int)slider.Value;
             _state.PersistPatterns();
             _state.RefreshGamma?.Invoke();
@@ -275,18 +292,22 @@ namespace App1.Views
 
         private void NewIntensitySlider_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
         {
+            if (sender is Slider slider)
+                _pointerDownSliders.Remove(slider);
+
             _state?.RefreshGamma?.Invoke();
         }
 
         /// <summary>
-        /// ドラッグ中のみ一時プレビュー。ホイール・ページ表示時のバインドではガンマを変えない。
+        /// マウスドラッグ中のみ一時プレビュー（有効/無効に関わらず画面ガンマを反映）。
+        /// ホイール・ページ表示時のバインドではガンマを変えない。
         /// </summary>
         private void ApplySliderGammaFeedback(Slider slider, int intensity)
         {
             if (_state == null || _wheelAdjustingSliders.Contains(slider))
                 return;
 
-            if (_draggingSliders.Contains(slider))
+            if (_pointerDownSliders.Contains(slider))
                 _state.PreviewGamma?.Invoke(intensity);
         }
 
