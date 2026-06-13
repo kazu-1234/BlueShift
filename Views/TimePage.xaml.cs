@@ -16,6 +16,7 @@ namespace App1.Views
         private bool _isInitializing;
         private readonly HashSet<Slider> _draggingSliders = new();
         private readonly HashSet<Slider> _wheelAdjustingSliders = new();
+        private readonly HashSet<Slider> _bindingSliders = new();
 
         public TimePage()
         {
@@ -74,8 +75,18 @@ namespace App1.Views
                 return;
 
             container.Loaded -= PatternItemContainer_Loaded;
-            if (FindDescendantSlider(container) is Slider slider)
-                AttachSliderInteractions(slider);
+
+            if (container.DataContext is not Pattern pattern)
+                return;
+
+            if (FindDescendantSlider(container) is not Slider slider)
+                return;
+
+            _bindingSliders.Add(slider);
+            slider.Tag = pattern.Id;
+            slider.Value = pattern.Intensity;
+            _bindingSliders.Remove(slider);
+            AttachSliderInteractions(slider);
         }
 
         private static Slider? FindDescendantSlider(DependencyObject root)
@@ -126,6 +137,13 @@ namespace App1.Views
 
             _wheelAdjustingSliders.Add(slider);
             SliderWheelHelper.HandlePointerWheelChanged(sender, e);
+
+            if (GetPatternFromSlider(slider) is Pattern pattern)
+            {
+                pattern.Intensity = (int)slider.Value;
+                _state?.PersistPatterns();
+            }
+
             DispatcherQueue.TryEnqueue(() => _wheelAdjustingSliders.Remove(slider));
         }
 
@@ -213,12 +231,17 @@ namespace App1.Views
 
         private void Slider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         {
-            if (_isInitializing || _state == null || sender is not Slider slider) return;
+            if (_isInitializing || _state == null || sender is not Slider slider)
+                return;
 
-            if (GetPatternFromSlider(slider) is Pattern pattern)
-                pattern.Intensity = (int)e.NewValue;
+            // ListView 再利用時のバインド更新ではガンマ・保存を行わない
+            if (_bindingSliders.Contains(slider))
+                return;
 
-            ApplySliderGammaFeedback(slider, (int)e.NewValue);
+            if (GetPatternFromSlider(slider) is not Pattern pattern)
+                return;
+
+            ApplySliderGammaFeedback(slider, pattern.Intensity);
         }
 
         private void Slider_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
@@ -265,10 +288,20 @@ namespace App1.Views
                 _state.PreviewGamma?.Invoke(intensity);
         }
 
-        private static Pattern? GetPatternFromSlider(Slider slider)
+        private Pattern? GetPatternFromSlider(Slider slider)
         {
-            if (slider.Tag is Pattern tagPattern) return tagPattern;
-            if (slider.DataContext is Pattern dataPattern) return dataPattern;
+            if (_state == null)
+                return null;
+
+            if (slider.Tag is string id)
+                return _state.Patterns.FirstOrDefault(p => p.Id == id);
+
+            if (slider.Tag is Pattern tagPattern)
+                return tagPattern;
+
+            if (slider.DataContext is Pattern dataPattern)
+                return dataPattern;
+
             return null;
         }
     }
