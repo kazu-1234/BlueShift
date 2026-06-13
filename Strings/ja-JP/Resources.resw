@@ -122,7 +122,25 @@
     <value>ログオン時に自動開始</value>
   </data>
   <data name="Settings_AutoStartDesc.Text" xml:space="preserve">
-    <value>タスクスケジューラでログオン時にバックグラウンド起動します</value>
+    <value>Windows ログオン時にバックグラウンドで起動します</value>
+  </data>
+  <data name="Settings_UseLogonTask.Content" xml:space="preserve">
+    <value>スタートアップへの登録の代わりに、ログオン時タスクとして実行する</value>
+  </data>
+  <data name="Settings_AutostartMode_Label.Text" xml:space="preserve">
+    <value>登録方式</value>
+  </data>
+  <data name="Settings_AutostartMode_Registry" xml:space="preserve">
+    <value>スタートアップ（レジストリ）</value>
+  </data>
+  <data name="Settings_AutostartMode_Task" xml:space="preserve">
+    <value>ログオン時タスク</value>
+  </data>
+  <data name="Settings_AutostartMode_Disabled" xml:space="preserve">
+    <value>無効</value>
+  </data>
+  <data name="Settings_AutostartPath_Label.Text" xml:space="preserve">
+    <value>登録パス</value>
   </data>
   <data name="Settings_SectionUpdate.Text" xml:space="preserve">
     <value>アップデート</value>

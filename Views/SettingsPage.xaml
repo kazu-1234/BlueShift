@@ -21,6 +21,53 @@
                     <ToggleSwitch x:Name="AutoStartToggle" Toggled="AutoStartToggle_Toggled" />
                 </controls:SettingsCard>
 
+                <controls:SettingsCard>
+                    <controls:SettingsCard.Description>
+                        <StackPanel Spacing="12">
+                            <CheckBox x:Name="UseLogonTaskCheckBox"
+                                      x:Uid="Settings_UseLogonTask"
+                                      Click="UseLogonTaskCheckBox_Click" />
+
+                            <Grid ColumnSpacing="10" RowSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" MinWidth="0" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock x:Uid="Settings_AutostartMode_Label"
+                                           Grid.Row="0"
+                                           Grid.Column="0"
+                                           FontSize="13"
+                                           Opacity="0.8"
+                                           VerticalAlignment="Center" />
+                                <TextBlock x:Name="AutostartModeText"
+                                           Grid.Row="0"
+                                           Grid.Column="1"
+                                           FontSize="13"
+                                           FontWeight="SemiBold"
+                                           TextWrapping="Wrap" />
+
+                                <TextBlock x:Uid="Settings_AutostartPath_Label"
+                                           Grid.Row="1"
+                                           Grid.Column="0"
+                                           FontSize="13"
+                                           Opacity="0.8"
+                                           VerticalAlignment="Top" />
+                                <TextBlock x:Name="AutostartPathText"
+                                           Grid.Row="1"
+                                           Grid.Column="1"
+                                           FontSize="13"
+                                           TextWrapping="Wrap"
+                                           IsTextSelectionEnabled="True" />
+                            </Grid>
+                        </StackPanel>
+                    </controls:SettingsCard.Description>
+                </controls:SettingsCard>
+
                 <TextBlock x:Uid="Settings_SectionUpdate" Style="{StaticResource SettingsSectionHeaderStyle}" />
 
                 <controls:SettingsCard>

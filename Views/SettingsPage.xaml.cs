@@ -27,7 +27,10 @@ namespace App1.Views
 
             _isInitializing = true;
             AutoStartToggle.IsOn = _state.Settings.AutoStart;
+            UseLogonTaskCheckBox.IsChecked = _state.Settings.UseLogonTask;
             VersionText.Text = Strings.Format("Version_Format", UpdateChecker.CurrentVersion);
+            UpdateAutoStartDetails();
+            UpdateLogonTaskCheckBoxEnabled();
             _isInitializing = false;
         }
 
@@ -36,7 +39,7 @@ namespace App1.Views
             if (_isInitializing || _state == null) return;
 
             bool requested = AutoStartToggle.IsOn;
-            if (!StartupManager.SetAutoStart(requested))
+            if (!StartupManager.ApplyAutoStart(requested, _state.Settings.UseLogonTask))
             {
                 _isInitializing = true;
                 AutoStartToggle.IsOn = !requested;
@@ -46,6 +49,60 @@ namespace App1.Views
 
             _state.Settings.AutoStart = requested;
             _state.Settings.Save();
+            UpdateAutoStartDetails();
+            UpdateLogonTaskCheckBoxEnabled();
+        }
+
+        private void UseLogonTaskCheckBox_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializing || _state == null) return;
+
+            bool useLogonTask = UseLogonTaskCheckBox.IsChecked == true;
+            _state.Settings.UseLogonTask = useLogonTask;
+            _state.Settings.Save();
+
+            if (!_state.Settings.AutoStart)
+                return;
+
+            if (!StartupManager.ApplyAutoStart(true, useLogonTask))
+            {
+                _isInitializing = true;
+                UseLogonTaskCheckBox.IsChecked = !useLogonTask;
+                _state.Settings.UseLogonTask = UseLogonTaskCheckBox.IsChecked == true;
+                _state.Settings.Save();
+                _isInitializing = false;
+                return;
+            }
+
+            UpdateAutoStartDetails();
+        }
+
+        private void UpdateLogonTaskCheckBoxEnabled()
+        {
+            UseLogonTaskCheckBox.IsEnabled = AutoStartToggle.IsOn;
+        }
+
+        private void UpdateAutoStartDetails()
+        {
+            if (_state == null)
+                return;
+
+            if (!_state.Settings.AutoStart)
+            {
+                AutostartModeText.Text = Strings.Get("Settings_AutostartMode_Disabled");
+                AutostartPathText.Text = Strings.Get("NotAvailable");
+                return;
+            }
+
+            bool useLogonTask = _state.Settings.UseLogonTask;
+            AutostartModeText.Text = useLogonTask
+                ? Strings.Get("Settings_AutostartMode_Task")
+                : Strings.Get("Settings_AutostartMode_Registry");
+
+            string? command = StartupManager.GetRegisteredCommand(useLogonTask);
+            AutostartPathText.Text = string.IsNullOrWhiteSpace(command)
+                ? Strings.Get("NotAvailable")
+                : command.Replace("\"", string.Empty);
         }
 
         private async void CheckUpdateButton_Click(object sender, RoutedEventArgs e)
