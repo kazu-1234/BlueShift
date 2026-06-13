@@ -27,12 +27,14 @@
                     <TextBlock x:Uid="Time_EnableFilter" FontWeight="SemiBold" />
                     <TextBlock x:Uid="Time_EnableFilterDesc" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
                 </StackPanel>
-                <Grid Grid.Column="1"
-                      Style="{StaticResource SettingsRowActionHostStyle}">
+                <StackPanel Grid.Column="1"
+                      Style="{StaticResource SettingsRowToggleHostStyle}">
+                    <TextBlock x:Name="FilterToggleLabel"
+                               Style="{StaticResource SettingsToggleLabelStyle}" />
                     <ToggleSwitch x:Name="FilterToggle"
                                   Style="{StaticResource CompactSettingsToggleSwitchStyle}"
                                   Toggled="FilterToggle_Toggled" />
-                </Grid>
+                </StackPanel>
             </Grid>
             </Border>
         </StackPanel>
@@ -163,7 +165,8 @@
                                     Maximum="100"
                                     Value="50"
                                     ValueChanged="NewIntensitySlider_ValueChanged"
-                                    PointerCaptureLost="NewIntensitySlider_PointerCaptureLost" />
+                                    PointerCaptureLost="NewIntensitySlider_PointerCaptureLost"
+                                    PointerWheelChanged="Slider_PointerWheelChanged" />
                         </StackPanel>
 
                         <Button x:Uid="Time_AddButton"
@@ -238,7 +241,8 @@
                                                     Value="{x:Bind Intensity, Mode=OneWay}"
                                                     Tag="{x:Bind}"
                                                     ValueChanged="Slider_ValueChanged"
-                                                    PointerCaptureLost="Slider_PointerCaptureLost" />
+                                                    PointerCaptureLost="Slider_PointerCaptureLost"
+                                                    PointerWheelChanged="Slider_PointerWheelChanged" />
                                         </StackPanel>
 
                                         <Button Grid.Column="2"

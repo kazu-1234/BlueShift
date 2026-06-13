@@ -126,6 +126,19 @@
                 <Setter Property="VerticalAlignment" Value="Center" />
             </Style>
 
+            <Style x:Key="SettingsRowToggleHostStyle" TargetType="StackPanel">
+                <Setter Property="Orientation" Value="Horizontal" />
+                <Setter Property="Spacing" Value="8" />
+                <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+
+            <Style x:Key="SettingsToggleLabelStyle" TargetType="TextBlock">
+                <Setter Property="MinWidth" Value="32" />
+                <Setter Property="TextAlignment" Value="Right" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+
             <Style x:Key="CompactSettingsToggleSwitchStyle" TargetType="ToggleSwitch">
                 <Setter Property="HorizontalAlignment" Value="Right" />
                 <Setter Property="VerticalAlignment" Value="Center" />
