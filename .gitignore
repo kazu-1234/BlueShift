@@ -20,3 +20,6 @@ publish/
 # OS
 Thumbs.db
 Desktop.ini
+
+# IDE / エディタ（リポジトリ非公開）
+.cursor/
