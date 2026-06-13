@@ -2,265 +2,249 @@
     x:Class="App1.Views.TimePage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:local="using:App1"
     xmlns:views="using:App1.Views"
     HorizontalAlignment="Stretch"
     VerticalAlignment="Stretch">
     <views:PageScrollHost>
-    <Grid Style="{StaticResource PageRootGridStyle}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" MinHeight="280" />
-        </Grid.RowDefinitions>
+        <Grid x:Name="ContentArea">
+            <StackPanel Style="{StaticResource PageBaseStackPanelStyle}">
+                <TextBlock x:Uid="Time_SectionToggle" Style="{StaticResource SettingsSectionHeaderStyle}" />
 
-        <StackPanel Grid.Row="0" Spacing="8">
-            <TextBlock x:Uid="Time_SectionToggle" Style="{StaticResource SettingsSectionHeaderStyle}" />
-            <Border Style="{StaticResource CompactSettingsCardStyle}">
-            <Grid Style="{StaticResource SettingsAlignedRowGridStyle}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" MinWidth="0" />
-                    <ColumnDefinition Width="{StaticResource SettingsActionColumnWidth}" />
-                </Grid.ColumnDefinitions>
-                <StackPanel Spacing="4" VerticalAlignment="Center" MinWidth="0">
-                    <TextBlock x:Uid="Time_EnableFilter" FontWeight="SemiBold" />
-                    <TextBlock x:Uid="Time_EnableFilterDesc" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
-                </StackPanel>
-                <Grid Grid.Column="1"
-                      Style="{StaticResource SettingsRowActionHostStyle}">
-                    <ToggleSwitch x:Name="FilterToggle"
-                                  Style="{StaticResource CompactSettingsToggleSwitchStyle}"
-                                  Toggled="FilterToggle_Toggled" />
-                </Grid>
-            </Grid>
-            </Border>
-        </StackPanel>
-
-        <InfoBar Grid.Row="1"
-                 x:Name="StatusInfoBar"
-                 IsOpen="False"
-                 IsClosable="False"
-                 Severity="Informational"
-                 HorizontalAlignment="Stretch" />
-
-        <TextBlock Grid.Row="2"
-                   x:Uid="Time_SectionSchedule"
-                   Style="{StaticResource SettingsSectionHeaderStyle}" />
-
-        <Grid x:Name="ScheduleLayoutGrid"
-              Grid.Row="3"
-              ColumnSpacing="16"
-              RowSpacing="16"
-              MinHeight="0">
-            <VisualStateManager.VisualStateGroups>
-                <VisualStateGroup x:Name="ScheduleLayoutStates">
-                    <VisualState x:Name="Wide">
-                        <VisualState.StateTriggers>
-                            <AdaptiveTrigger MinWindowWidth="1200" />
-                        </VisualState.StateTriggers>
-                        <VisualState.Setters>
-                            <Setter Target="ScheduleLeftPanel.(Grid.Row)" Value="0" />
-                            <Setter Target="ScheduleLeftPanel.(Grid.Column)" Value="0" />
-                            <Setter Target="ScheduleLeftPanel.(Grid.ColumnSpan)" Value="1" />
-                            <Setter Target="ScheduleRightPanel.(Grid.Row)" Value="0" />
-                            <Setter Target="ScheduleRightPanel.(Grid.Column)" Value="1" />
-                            <Setter Target="ScheduleRightPanel.(Grid.ColumnSpan)" Value="1" />
-                        </VisualState.Setters>
-                    </VisualState>
-                    <VisualState x:Name="Narrow">
-                        <VisualState.Setters>
-                            <Setter Target="ScheduleLeftPanel.(Grid.Row)" Value="0" />
-                            <Setter Target="ScheduleLeftPanel.(Grid.Column)" Value="0" />
-                            <Setter Target="ScheduleLeftPanel.(Grid.ColumnSpan)" Value="1" />
-                            <Setter Target="ScheduleRightPanel.(Grid.Row)" Value="1" />
-                            <Setter Target="ScheduleRightPanel.(Grid.Column)" Value="0" />
-                            <Setter Target="ScheduleRightPanel.(Grid.ColumnSpan)" Value="1" />
-                        </VisualState.Setters>
-                    </VisualState>
-                </VisualStateGroup>
-            </VisualStateManager.VisualStateGroups>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" MinWidth="0" />
-                <ColumnDefinition Width="1.2*" MinWidth="0" />
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" MinHeight="240" />
-            </Grid.RowDefinitions>
-
-            <Border x:Name="ScheduleLeftPanel"
-                    Grid.Column="0"
-                    Style="{StaticResource CompactSettingsCardStyle}"
-                    VerticalAlignment="Stretch"
-                    HorizontalAlignment="Stretch">
-                    <StackPanel Spacing="16">
-                        <TextBlock x:Uid="Time_AddSchedule" FontWeight="SemiBold" />
-
-                        <CheckBox x:Name="HasEndTimeCheckBox"
-                                  x:Uid="Time_SpecifyEndTime"
-                                  Checked="HasEndTimeCheckBox_Changed"
-                                  Unchecked="HasEndTimeCheckBox_Changed" />
-
-                        <Grid ColumnSpacing="8" RowSpacing="16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid.Resources>
-                                <Style BasedOn="{StaticResource BodyTextBlockStyle}" TargetType="TextBlock">
-                                    <Setter Property="VerticalAlignment" Value="Center" />
-                                </Style>
-                            </Grid.Resources>
-
-                            <FontIcon Grid.Column="0"
-                                      FontSize="16"
-                                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                                      Glyph="&#xE706;"
-                                      VerticalAlignment="Center" />
-                            <TextBlock Grid.Column="1" x:Uid="Time_Start" />
-                            <TimePicker x:Name="NewTimePicker"
-                                        Grid.Column="2"
-                                        Margin="16,0,0,0"
-                                        ClockIdentifier="24HourClock"
-                                        HorizontalAlignment="Stretch" />
-
-                            <FontIcon Grid.Row="1"
-                                      Grid.Column="0"
-                                      FontSize="16"
-                                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                                      Glyph="&#xE708;"
-                                      VerticalAlignment="Center" />
-                            <TextBlock Grid.Row="1" Grid.Column="1" x:Uid="Time_End" />
-                            <TimePicker x:Name="NewEndTimePicker"
-                                        Grid.Row="1"
-                                        Grid.Column="2"
-                                        Margin="16,0,0,0"
-                                        IsEnabled="False"
-                                        ClockIdentifier="24HourClock"
-                                        HorizontalAlignment="Stretch" />
-                        </Grid>
-
-                        <StackPanel Spacing="8">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock x:Uid="Time_Intensity" FontSize="14" Opacity="0.8" VerticalAlignment="Center" />
-                                <TextBlock x:Name="NewIntensityValue"
-                                           Grid.Column="1"
-                                           Text="50%"
-                                           FontSize="14"
-                                           FontWeight="SemiBold"
-                                           VerticalAlignment="Center" />
-                            </Grid>
-                            <Slider x:Name="NewIntensitySlider"
-                                    Minimum="0"
-                                    Maximum="100"
-                                    Value="50"
-                                    ValueChanged="NewIntensitySlider_ValueChanged"
-                                    PointerCaptureLost="NewIntensitySlider_PointerCaptureLost" />
+                <controls:SettingsCard>
+                    <controls:SettingsCard.Header>
+                        <StackPanel Spacing="4" MinWidth="0">
+                            <TextBlock x:Uid="Time_EnableFilter" FontWeight="SemiBold" />
+                            <TextBlock x:Uid="Time_EnableFilterDesc" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
                         </StackPanel>
+                    </controls:SettingsCard.Header>
+                    <ToggleSwitch x:Name="FilterToggle" Toggled="FilterToggle_Toggled" />
+                </controls:SettingsCard>
 
-                        <Button x:Uid="Time_AddButton"
-                                Click="AddPattern_Click"
-                                Style="{ThemeResource AccentButtonStyle}"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Center"
-                                Padding="20,10" />
-                    </StackPanel>
-            </Border>
+                <InfoBar x:Name="StatusInfoBar"
+                         IsOpen="False"
+                         IsClosable="False"
+                         Severity="Informational"
+                         HorizontalAlignment="Stretch" />
 
-            <Border x:Name="ScheduleRightPanel"
-                    Grid.Column="1"
-                    Style="{StaticResource CompactSettingsCardStyle}"
-                    VerticalAlignment="Stretch"
-                    HorizontalAlignment="Stretch"
-                    MinHeight="0">
-                <Grid>
-                    <TextBlock x:Name="EmptyStateText"
-                               x:Uid="Time_EmptyState"
-                               TextWrapping="Wrap"
-                               Opacity="0.7"
-                               VerticalAlignment="Center"
-                               HorizontalAlignment="Center"
-                               MaxWidth="360"
-                               Visibility="Collapsed" />
+                <TextBlock x:Uid="Time_SectionSchedule" Style="{StaticResource SettingsSectionHeaderStyle}" />
 
-                    <ListView x:Name="PatternsList"
-                              SelectionMode="None"
-                              ItemContainerStyle="{StaticResource PatternListItemContainerStyle}"
-                              Visibility="Collapsed"
-                              VerticalAlignment="Stretch"
-                              HorizontalAlignment="Stretch">
-                        <ListView.ItemTemplate>
-                            <DataTemplate x:DataType="local:Pattern">
-                                <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
-                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="6"
-                                        Padding="16,12,12,12"
-                                        HorizontalAlignment="Stretch">
-                                    <Grid ColumnSpacing="10">
+                <Grid x:Name="ScheduleLayoutGrid"
+                      ColumnSpacing="16"
+                      RowSpacing="16"
+                      MinHeight="280">
+                    <VisualStateManager.VisualStateGroups>
+                        <VisualStateGroup x:Name="ScheduleLayoutStates">
+                            <VisualState x:Name="Wide">
+                                <VisualState.StateTriggers>
+                                    <AdaptiveTrigger MinWindowWidth="1200" />
+                                </VisualState.StateTriggers>
+                                <VisualState.Setters>
+                                    <Setter Target="ScheduleLeftPanel.(Grid.Row)" Value="0" />
+                                    <Setter Target="ScheduleLeftPanel.(Grid.Column)" Value="0" />
+                                    <Setter Target="ScheduleLeftPanel.(Grid.ColumnSpan)" Value="1" />
+                                    <Setter Target="ScheduleRightPanel.(Grid.Row)" Value="0" />
+                                    <Setter Target="ScheduleRightPanel.(Grid.Column)" Value="1" />
+                                    <Setter Target="ScheduleRightPanel.(Grid.ColumnSpan)" Value="1" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="Narrow">
+                                <VisualState.Setters>
+                                    <Setter Target="ScheduleLeftPanel.(Grid.Row)" Value="0" />
+                                    <Setter Target="ScheduleLeftPanel.(Grid.Column)" Value="0" />
+                                    <Setter Target="ScheduleLeftPanel.(Grid.ColumnSpan)" Value="1" />
+                                    <Setter Target="ScheduleRightPanel.(Grid.Row)" Value="1" />
+                                    <Setter Target="ScheduleRightPanel.(Grid.Column)" Value="0" />
+                                    <Setter Target="ScheduleRightPanel.(Grid.ColumnSpan)" Value="1" />
+                                </VisualState.Setters>
+                            </VisualState>
+                        </VisualStateGroup>
+                    </VisualStateManager.VisualStateGroups>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="0" />
+                        <ColumnDefinition Width="1.2*" MinWidth="0" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" MinHeight="240" />
+                    </Grid.RowDefinitions>
+
+                    <controls:SettingsCard x:Name="ScheduleLeftPanel"
+                                           Grid.Column="0"
+                                           HorizontalAlignment="Stretch"
+                                           VerticalAlignment="Stretch">
+                        <controls:SettingsCard.Description>
+                            <StackPanel Spacing="16">
+                                <TextBlock x:Uid="Time_AddSchedule" FontWeight="SemiBold" />
+
+                                <CheckBox x:Name="HasEndTimeCheckBox"
+                                          x:Uid="Time_SpecifyEndTime"
+                                          Checked="HasEndTimeCheckBox_Changed"
+                                          Unchecked="HasEndTimeCheckBox_Changed" />
+
+                                <Grid ColumnSpacing="8" RowSpacing="16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid.Resources>
+                                        <Style BasedOn="{StaticResource BodyTextBlockStyle}" TargetType="TextBlock">
+                                            <Setter Property="VerticalAlignment" Value="Center" />
+                                        </Style>
+                                    </Grid.Resources>
+
+                                    <FontIcon Grid.Column="0"
+                                              FontSize="16"
+                                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                              Glyph="&#xE706;"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" x:Uid="Time_Start" />
+                                    <TimePicker x:Name="NewTimePicker"
+                                                Grid.Column="2"
+                                                Margin="16,0,0,0"
+                                                ClockIdentifier="24HourClock"
+                                                HorizontalAlignment="Stretch" />
+
+                                    <FontIcon Grid.Row="1"
+                                              Grid.Column="0"
+                                              FontSize="16"
+                                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                              Glyph="&#xE708;"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" x:Uid="Time_End" />
+                                    <TimePicker x:Name="NewEndTimePicker"
+                                                Grid.Row="1"
+                                                Grid.Column="2"
+                                                Margin="16,0,0,0"
+                                                IsEnabled="False"
+                                                ClockIdentifier="24HourClock"
+                                                HorizontalAlignment="Stretch" />
+                                </Grid>
+
+                                <StackPanel Spacing="8">
+                                    <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="120" MinWidth="0" />
-                                            <ColumnDefinition Width="*" MinWidth="0" />
-                                            <ColumnDefinition Width="48" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-
-                                        <StackPanel VerticalAlignment="Center" Spacing="4">
-                                            <TextBlock x:Uid="Time_TimeRange" FontSize="12" Opacity="0.7" />
-                                            <TextBlock Text="{x:Bind TimeRangeDisplay, Mode=OneWay}"
-                                                       FontSize="15"
-                                                       FontWeight="SemiBold"
-                                                       TextWrapping="Wrap" />
-                                        </StackPanel>
-
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="8" MinWidth="0">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock x:Uid="Time_ListIntensity" FontSize="12" Opacity="0.7" VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="1"
-                                                           Text="{x:Bind IntensityDisplay, Mode=OneWay}"
-                                                           FontSize="12"
-                                                           FontWeight="SemiBold"
-                                                           VerticalAlignment="Center"
-                                                           Margin="8,0,0,0" />
-                                            </Grid>
-                                            <Slider Minimum="0"
-                                                    Maximum="100"
-                                                    Value="{x:Bind Intensity, Mode=OneWay}"
-                                                    Tag="{x:Bind}"
-                                                    ValueChanged="Slider_ValueChanged"
-                                                    PointerCaptureLost="Slider_PointerCaptureLost" />
-                                        </StackPanel>
-
-                                        <Button Grid.Column="2"
-                                                Style="{StaticResource DeleteIconButtonStyle}"
-                                                Tag="{x:Bind Id}"
-                                                Click="DeletePattern_Click"
-                                                x:Uid="Time_Delete">
-                                            <FontIcon Glyph="&#xE74D;"
-                                                      FontSize="16"
-                                                      FontFamily="{ThemeResource SymbolThemeFontFamily}" />
-                                        </Button>
+                                        <TextBlock x:Uid="Time_Intensity" FontSize="14" Opacity="0.8" VerticalAlignment="Center" />
+                                        <TextBlock x:Name="NewIntensityValue"
+                                                   Grid.Column="1"
+                                                   Text="50%"
+                                                   FontSize="14"
+                                                   FontWeight="SemiBold"
+                                                   VerticalAlignment="Center" />
                                     </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
+                                    <Slider x:Name="NewIntensitySlider"
+                                            Minimum="0"
+                                            Maximum="100"
+                                            Value="50"
+                                            ValueChanged="NewIntensitySlider_ValueChanged"
+                                            PointerCaptureLost="NewIntensitySlider_PointerCaptureLost" />
+                                </StackPanel>
+
+                                <Button x:Uid="Time_AddButton"
+                                        Click="AddPattern_Click"
+                                        Style="{ThemeResource AccentButtonStyle}"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Center"
+                                        Padding="20,10" />
+                            </StackPanel>
+                        </controls:SettingsCard.Description>
+                    </controls:SettingsCard>
+
+                    <controls:SettingsCard x:Name="ScheduleRightPanel"
+                                           Grid.Column="1"
+                                           HorizontalAlignment="Stretch"
+                                           VerticalAlignment="Stretch"
+                                           MinHeight="0">
+                        <controls:SettingsCard.Description>
+                            <Grid MinHeight="200">
+                                <TextBlock x:Name="EmptyStateText"
+                                           x:Uid="Time_EmptyState"
+                                           TextWrapping="Wrap"
+                                           Opacity="0.7"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Center"
+                                           MaxWidth="360"
+                                           Visibility="Collapsed" />
+
+                                <ListView x:Name="PatternsList"
+                                          SelectionMode="None"
+                                          ItemContainerStyle="{StaticResource PatternListItemContainerStyle}"
+                                          Visibility="Collapsed"
+                                          VerticalAlignment="Stretch"
+                                          HorizontalAlignment="Stretch">
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate x:DataType="local:Pattern">
+                                            <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="6"
+                                                    Padding="16,12,12,12"
+                                                    HorizontalAlignment="Stretch">
+                                                <Grid ColumnSpacing="10">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="120" MinWidth="0" />
+                                                        <ColumnDefinition Width="*" MinWidth="0" />
+                                                        <ColumnDefinition Width="48" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <StackPanel VerticalAlignment="Center" Spacing="4">
+                                                        <TextBlock x:Uid="Time_TimeRange" FontSize="12" Opacity="0.7" />
+                                                        <TextBlock Text="{x:Bind TimeRangeDisplay, Mode=OneWay}"
+                                                                   FontSize="15"
+                                                                   FontWeight="SemiBold"
+                                                                   TextWrapping="Wrap" />
+                                                    </StackPanel>
+
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="8" MinWidth="0">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock x:Uid="Time_ListIntensity" FontSize="12" Opacity="0.7" VerticalAlignment="Center" />
+                                                            <TextBlock Grid.Column="1"
+                                                                       Text="{x:Bind IntensityDisplay, Mode=OneWay}"
+                                                                       FontSize="12"
+                                                                       FontWeight="SemiBold"
+                                                                       VerticalAlignment="Center"
+                                                                       Margin="8,0,0,0" />
+                                                        </Grid>
+                                                        <Slider Minimum="0"
+                                                                Maximum="100"
+                                                                Value="{x:Bind Intensity, Mode=OneWay}"
+                                                                Tag="{x:Bind}"
+                                                                ValueChanged="Slider_ValueChanged"
+                                                                PointerCaptureLost="Slider_PointerCaptureLost" />
+                                                    </StackPanel>
+
+                                                    <Button Grid.Column="2"
+                                                            Style="{StaticResource DeleteIconButtonStyle}"
+                                                            Tag="{x:Bind Id}"
+                                                            Click="DeletePattern_Click"
+                                                            x:Uid="Time_Delete">
+                                                        <FontIcon Glyph="&#xE74D;"
+                                                                  FontSize="16"
+                                                                  FontFamily="{ThemeResource SymbolThemeFontFamily}" />
+                                                    </Button>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                            </Grid>
+                        </controls:SettingsCard.Description>
+                    </controls:SettingsCard>
                 </Grid>
-            </Border>
+            </StackPanel>
         </Grid>
-    </Grid>
     </views:PageScrollHost>
 </Page>
