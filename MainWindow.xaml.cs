@@ -91,12 +91,17 @@ namespace App1
 
             AppWindow.ResizeClient(new SizeInt32(DefaultClientWidth, DefaultClientHeight));
             ConfigureMinimumWindowSize();
-            NavigateToPage("Time", force: true);
 
-            // まず必ず表示して 1 フレーム描画する。非表示は描画完了後にのみ行う。
-            ShowMainWindow();
+            // Loaded 処理中の Navigate / UpdateLayout は MeasureOverride を壊すため次フレームへ defer する。
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (_isExiting)
+                    return;
 
-            CompositionTarget.Rendering += OnFirstFrameRendered;
+                NavigateToPage("Time", force: true);
+                ShowMainWindow();
+                CompositionTarget.Rendering += OnFirstFrameRendered;
+            });
         }
 
         private void OnFirstFrameRendered(object? sender, object e)
@@ -233,14 +238,8 @@ namespace App1
             AppWindow.Show();
             Activate();
 
-            if (_uiInitialized)
-            {
-                if (forceRefresh)
-                    NavigateToPage(_currentPageTag, force: true);
-
-                RootGrid.UpdateLayout();
-                ContentFrame.UpdateLayout();
-            }
+            if (forceRefresh && _uiInitialized)
+                NavigateToPage(_currentPageTag, force: true);
 
             if (bringToForeground)
             {
