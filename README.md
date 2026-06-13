@@ -12,12 +12,22 @@ Windows 向けの時間帯スケジュール型ブルーライトカットアプ
 
 ## ダウンロード
 
-[Releases](https://github.com/kazu-1234/BlueShift/releases) から `BlueShift-v1.0.22-win-x64.zip` をダウンロードし、任意のフォルダに展開して `BlueShift.exe` を実行してください。  
-.NET の別途インストールは不要です（自己完結型ビルド）。
+[Releases](https://github.com/kazu-1234/BlueShift/releases) から以下のいずれかを取得してください（.NET の別途インストールは不要です）。
+
+| ファイル | 説明 |
+|---------|------|
+| `BlueShift-v1.0.22-win-x64.exe` | **単体 exe**（そのまま実行可能・約 620 MB） |
+| `BlueShift-v1.0.22-win-x64.zip` | フォルダ展開版（容量を抑えたい場合） |
 
 ## ビルド
 
 ```powershell
+# 単体 exe（推奨・配布用）
+dotnet publish App1.csproj -c Release -p:Platform=x64 -r win-x64 --self-contained true `
+  -p:WindowsAppSDKSelfContained=true -p:EnableMsixTooling=true `
+  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+
+# フォルダ版
 dotnet publish App1.csproj -c Release -p:Platform=x64 -r win-x64 --self-contained true -p:WindowsAppSDKSelfContained=true
 ```
 
