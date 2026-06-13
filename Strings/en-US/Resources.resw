@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppName" xml:space="preserve">
+    <value>BlueShift</value>
+  </data>
+  <data name="Nav_Time.Content" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="Nav_Info.Content" xml:space="preserve">
+    <value>Info</value>
+  </data>
+  <data name="Toggle_On" xml:space="preserve">
+    <value>On</value>
+  </data>
+  <data name="Toggle_Off" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="Time_SectionToggle.Text" xml:space="preserve">
+    <value>Toggle</value>
+  </data>
+  <data name="Time_EnableFilter.Text" xml:space="preserve">
+    <value>Enable BlueShift</value>
+  </data>
+  <data name="Time_EnableFilterDesc.Text" xml:space="preserve">
+    <value>Automatically adjusts screen color temperature by time of day</value>
+  </data>
+  <data name="Time_SectionSchedule.Text" xml:space="preserve">
+    <value>Schedule</value>
+  </data>
+  <data name="Time_AddSchedule.Text" xml:space="preserve">
+    <value>Add a new schedule</value>
+  </data>
+  <data name="Time_SpecifyEndTime.Content" xml:space="preserve">
+    <value>Specify end time</value>
+  </data>
+  <data name="Time_Start.Text" xml:space="preserve">
+    <value>Start</value>
+  </data>
+  <data name="Time_End.Text" xml:space="preserve">
+    <value>End</value>
+  </data>
+  <data name="Time_Intensity.Text" xml:space="preserve">
+    <value>Intensity</value>
+  </data>
+  <data name="Time_AddButton.Content" xml:space="preserve">
+    <value>Add schedule</value>
+  </data>
+  <data name="Time_EmptyState.Text" xml:space="preserve">
+    <value>No schedules yet. Add one using the form on the left.</value>
+  </data>
+  <data name="Time_TimeRange.Text" xml:space="preserve">
+    <value>Time range</value>
+  </data>
+  <data name="Time_ListIntensity.Text" xml:space="preserve">
+    <value>Intensity</value>
+  </data>
+  <data name="Time_Delete.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Settings_SectionStartup.Text" xml:space="preserve">
+    <value>Startup</value>
+  </data>
+  <data name="Settings_AutoStart.Text" xml:space="preserve">
+    <value>Start automatically at logon</value>
+  </data>
+  <data name="Settings_AutoStartDesc.Text" xml:space="preserve">
+    <value>Runs in the background at logon via Task Scheduler</value>
+  </data>
+  <data name="Settings_SectionUpdate.Text" xml:space="preserve">
+    <value>Updates</value>
+  </data>
+  <data name="Settings_UpdateDesc.Text" xml:space="preserve">
+    <value>Check for the latest version from GitHub Releases</value>
+  </data>
+  <data name="Settings_CheckUpdate.Content" xml:space="preserve">
+    <value>Check for updates</value>
+  </data>
+  <data name="Info_AppName.Text" xml:space="preserve">
+    <value>BlueShift</value>
+  </data>
+  <data name="Info_SectionStatus.Text" xml:space="preserve">
+    <value>Current status</value>
+  </data>
+  <data name="Info_Feature.Text" xml:space="preserve">
+    <value>Feature</value>
+  </data>
+  <data name="Info_Intensity.Text" xml:space="preserve">
+    <value>Intensity</value>
+  </data>
+  <data name="Info_Schedule.Text" xml:space="preserve">
+    <value>Active schedule</value>
+  </data>
+  <data name="Info_NextTransition.Text" xml:space="preserve">
+    <value>Next transition</value>
+  </data>
+  <data name="Info_SectionAbout.Text" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="Info_Description.Text" xml:space="preserve">
+    <value>Reduces blue light on your screen by time of day to ease eye strain. Keeps running in the system tray after you close the window.</value>
+  </data>
+  <data name="Info_Disclaimer.Text" xml:space="preserve">
+    <value>The developer is not liable for any damages arising from the use of this software. Use at your own risk.</value>
+  </data>
+  <data name="Status_Enabled" xml:space="preserve">
+    <value>Enabled</value>
+  </data>
+  <data name="Status_Disabled" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="Status_FilterDisabled" xml:space="preserve">
+    <value>The feature is currently disabled.</value>
+  </data>
+  <data name="Status_NoSchedule" xml:space="preserve">
+    <value>No schedules configured. The feature is idle.</value>
+  </data>
+  <data name="Status_Applied" xml:space="preserve">
+    <value>Current intensity: {0}% (from: {1})</value>
+  </data>
+  <data name="Delay_HoursMinutes" xml:space="preserve">
+    <value>In about {0} h {1} min</value>
+  </data>
+  <data name="Delay_Minutes" xml:space="preserve">
+    <value>In about {0} min</value>
+  </data>
+  <data name="Delay_Seconds" xml:space="preserve">
+    <value>In about {0} sec</value>
+  </data>
+  <data name="Pattern_TimeRange" xml:space="preserve">
+    <value>{0} – {1}</value>
+  </data>
+  <data name="Pattern_TimeRangeOpen" xml:space="preserve">
+    <value>{0} –</value>
+  </data>
+  <data name="Version_Format" xml:space="preserve">
+    <value>Version {0}</value>
+  </data>
+  <data name="Update_NotConfigured" xml:space="preserve">
+    <value>Update check URL is not configured. Set a GitHub Releases URL later.</value>
+  </data>
+  <data name="Update_FetchFailed" xml:space="preserve">
+    <value>Failed to fetch release information.</value>
+  </data>
+  <data name="Update_Available" xml:space="preserve">
+    <value>A new version {0} is available. (Current: {1})</value>
+  </data>
+  <data name="Update_UpToDate" xml:space="preserve">
+    <value>You are on the latest version. ({0})</value>
+  </data>
+  <data name="Update_Error" xml:space="preserve">
+    <value>An error occurred while checking for updates: {0}</value>
+  </data>
+  <data name="Update_DialogTitle" xml:space="preserve">
+    <value>Update available</value>
+  </data>
+  <data name="Update_DialogContent" xml:space="preserve">
+    <value>{0}
+
+Open the release page?</value>
+  </data>
+  <data name="Update_DialogOpen" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="Update_DialogClose" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Tray_OpenSettings" xml:space="preserve">
+    <value>Open settings</value>
+  </data>
+  <data name="Tray_Exit" xml:space="preserve">
+    <value>Exit</value>
+  </data>
+  <data name="NotAvailable" xml:space="preserve">
+    <value>—</value>
+  </data>
+</root>

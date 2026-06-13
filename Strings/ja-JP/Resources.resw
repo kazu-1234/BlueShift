@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppName" xml:space="preserve">
+    <value>BlueShift</value>
+  </data>
+  <data name="Nav_Time.Content" xml:space="preserve">
+    <value>時間</value>
+  </data>
+  <data name="Nav_Info.Content" xml:space="preserve">
+    <value>情報</value>
+  </data>
+  <data name="Toggle_On" xml:space="preserve">
+    <value>オン</value>
+  </data>
+  <data name="Toggle_Off" xml:space="preserve">
+    <value>オフ</value>
+  </data>
+  <data name="Time_SectionToggle.Text" xml:space="preserve">
+    <value>切り替え</value>
+  </data>
+  <data name="Time_EnableFilter.Text" xml:space="preserve">
+    <value>BlueShift を有効にする</value>
+  </data>
+  <data name="Time_EnableFilterDesc.Text" xml:space="preserve">
+    <value>時間帯に応じて画面の色温度を自動調整します</value>
+  </data>
+  <data name="Time_SectionSchedule.Text" xml:space="preserve">
+    <value>スケジュール</value>
+  </data>
+  <data name="Time_AddSchedule.Text" xml:space="preserve">
+    <value>新しいスケジュールを追加</value>
+  </data>
+  <data name="Time_SpecifyEndTime.Content" xml:space="preserve">
+    <value>終了時間を指定する</value>
+  </data>
+  <data name="Time_Start.Text" xml:space="preserve">
+    <value>開始</value>
+  </data>
+  <data name="Time_End.Text" xml:space="preserve">
+    <value>終了</value>
+  </data>
+  <data name="Time_Intensity.Text" xml:space="preserve">
+    <value>適用強度</value>
+  </data>
+  <data name="Time_AddButton.Content" xml:space="preserve">
+    <value>スケジュールを追加</value>
+  </data>
+  <data name="Time_EmptyState.Text" xml:space="preserve">
+    <value>スケジュールがありません。左のフォームから追加してください。</value>
+  </data>
+  <data name="Time_TimeRange.Text" xml:space="preserve">
+    <value>時間帯</value>
+  </data>
+  <data name="Time_ListIntensity.Text" xml:space="preserve">
+    <value>適用強度</value>
+  </data>
+  <data name="Time_Delete.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>削除</value>
+  </data>
+  <data name="Settings_SectionStartup.Text" xml:space="preserve">
+    <value>起動</value>
+  </data>
+  <data name="Settings_AutoStart.Text" xml:space="preserve">
+    <value>ログオン時に自動開始</value>
+  </data>
+  <data name="Settings_AutoStartDesc.Text" xml:space="preserve">
+    <value>タスクスケジューラでログオン時にバックグラウンド起動します</value>
+  </data>
+  <data name="Settings_SectionUpdate.Text" xml:space="preserve">
+    <value>アップデート</value>
+  </data>
+  <data name="Settings_UpdateDesc.Text" xml:space="preserve">
+    <value>GitHub リリースから最新版を確認します</value>
+  </data>
+  <data name="Settings_CheckUpdate.Content" xml:space="preserve">
+    <value>更新を確認</value>
+  </data>
+  <data name="Info_AppName.Text" xml:space="preserve">
+    <value>BlueShift</value>
+  </data>
+  <data name="Info_SectionStatus.Text" xml:space="preserve">
+    <value>現在の状態</value>
+  </data>
+  <data name="Info_Feature.Text" xml:space="preserve">
+    <value>機能</value>
+  </data>
+  <data name="Info_Intensity.Text" xml:space="preserve">
+    <value>適用強度</value>
+  </data>
+  <data name="Info_Schedule.Text" xml:space="preserve">
+    <value>適用スケジュール</value>
+  </data>
+  <data name="Info_NextTransition.Text" xml:space="preserve">
+    <value>次の切り替え</value>
+  </data>
+  <data name="Info_SectionAbout.Text" xml:space="preserve">
+    <value>アプリについて</value>
+  </data>
+  <data name="Info_Description.Text" xml:space="preserve">
+    <value>時間帯ごとに画面のブルーライトを抑え、目の負担を軽減します。ウィンドウを閉じてもタスクトレイでバックグラウンド動作を続けます。</value>
+  </data>
+  <data name="Info_Disclaimer.Text" xml:space="preserve">
+    <value>本ソフトウェアの使用により生じたいかなる損害についても、開発者は一切の責任を負いません。自己責任でご使用ください。</value>
+  </data>
+  <data name="Status_Enabled" xml:space="preserve">
+    <value>有効</value>
+  </data>
+  <data name="Status_Disabled" xml:space="preserve">
+    <value>無効</value>
+  </data>
+  <data name="Status_FilterDisabled" xml:space="preserve">
+    <value>機能は現在無効です。</value>
+  </data>
+  <data name="Status_NoSchedule" xml:space="preserve">
+    <value>スケジュールがありません。機能は待機中です。</value>
+  </data>
+  <data name="Status_Applied" xml:space="preserve">
+    <value>現在の適用強度: {0}%（適用元: {1}）</value>
+  </data>
+  <data name="Delay_HoursMinutes" xml:space="preserve">
+    <value>約 {0} 時間 {1} 分後</value>
+  </data>
+  <data name="Delay_Minutes" xml:space="preserve">
+    <value>約 {0} 分後</value>
+  </data>
+  <data name="Delay_Seconds" xml:space="preserve">
+    <value>約 {0} 秒後</value>
+  </data>
+  <data name="Pattern_TimeRange" xml:space="preserve">
+    <value>{0} 〜 {1}</value>
+  </data>
+  <data name="Pattern_TimeRangeOpen" xml:space="preserve">
+    <value>{0} 〜</value>
+  </data>
+  <data name="Version_Format" xml:space="preserve">
+    <value>バージョン {0}</value>
+  </data>
+  <data name="Update_NotConfigured" xml:space="preserve">
+    <value>アップデート確認 URL が未設定です。後日 GitHub リリース URL を設定してください。</value>
+  </data>
+  <data name="Update_FetchFailed" xml:space="preserve">
+    <value>リリース情報の取得に失敗しました。</value>
+  </data>
+  <data name="Update_Available" xml:space="preserve">
+    <value>新しいバージョン {0} が利用可能です。（現在: {1}）</value>
+  </data>
+  <data name="Update_UpToDate" xml:space="preserve">
+    <value>最新バージョンです。（{0}）</value>
+  </data>
+  <data name="Update_Error" xml:space="preserve">
+    <value>アップデート確認中にエラーが発生しました: {0}</value>
+  </data>
+  <data name="Update_DialogTitle" xml:space="preserve">
+    <value>アップデートがあります</value>
+  </data>
+  <data name="Update_DialogContent" xml:space="preserve">
+    <value>{0}
+
+リリースページを開きますか？</value>
+  </data>
+  <data name="Update_DialogOpen" xml:space="preserve">
+    <value>開く</value>
+  </data>
+  <data name="Update_DialogClose" xml:space="preserve">
+    <value>閉じる</value>
+  </data>
+  <data name="Tray_OpenSettings" xml:space="preserve">
+    <value>設定を開く</value>
+  </data>
+  <data name="Tray_Exit" xml:space="preserve">
+    <value>終了</value>
+  </data>
+  <data name="NotAvailable" xml:space="preserve">
+    <value>—</value>
+  </data>
+</root>
