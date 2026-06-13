@@ -9,8 +9,13 @@ publish/
 .vs/
 *.sln.docstates
 
-# Backup
+# Backup / temp
 *.bak
+*.tmp
+*.log
+
+# Debug symbols (配布不要)
+*.pdb
 
 # OS
 Thumbs.db
