@@ -28,22 +28,31 @@ namespace App1
         private readonly ObservableCollection<Pattern> _patterns;
         private readonly AppState _appState;
         private readonly DispatcherTimer _timer;
-        private readonly bool _startInBackground;
+
+        /// <summary>ログオン時タスクなど --background で起動した場合 true。</summary>
+        private readonly bool _launchInBackgroundMode;
+
+        /// <summary>起動直後にユーザーが GUI を見たい場合 true（通常起動・二重起動）。</summary>
+        private bool _userWantsVisible;
 
         private TrayMessageWindow? _trayMessageWindow;
         private bool _canHideToTray;
         private bool _isExiting;
-        private bool _initialSetupDone;
-        private bool _rootGridReady;
-        private bool _windowActivated;
+        private bool _uiInitialized;
+        private bool _uiRenderedOnce;
+        private bool _trayInitialized;
         private bool _gammaInitialized;
         private IntPtr _hwnd;
         private string _currentPageTag = "Time";
-        private CancellationTokenSource? _showWindowListenerCts;
+        private CancellationTokenSource? _interactiveShowListenerCts;
 
-        public MainWindow(bool startInBackground = false, EventWaitHandle? showWindowEvent = null)
+        public MainWindow(
+            bool launchInBackground = false,
+            bool requestVisibleOnLaunch = true,
+            EventWaitHandle? interactiveShowEvent = null)
         {
-            _startInBackground = startInBackground;
+            _launchInBackgroundMode = launchInBackground;
+            _userWantsVisible = requestVisibleOnLaunch;
 
             InitializeComponent();
             Title = Strings.Get("AppName");
@@ -63,77 +72,87 @@ namespace App1
             _timer.Tick += Timer_Tick;
 
             AppWindow.Closing += AppWindow_Closing;
-            Activated += MainWindow_Activated;
             RootGrid.Loaded += RootGrid_Loaded;
             ContentFrame.NavigationFailed += ContentFrame_NavigationFailed;
 
-            SetupTrayIcon();
-            EnsureTrayIconVisible();
-            StartShowWindowListener(showWindowEvent);
-        }
-
-        private void RootGrid_Loaded(object sender, RoutedEventArgs e)
-        {
-            RootGrid.Loaded -= RootGrid_Loaded;
-            _rootGridReady = true;
-            TryCompleteInitialSetup();
-        }
-
-        private void MainWindow_Activated(object sender, WindowActivatedEventArgs e)
-        {
-            if (e.WindowActivationState == WindowActivationState.Deactivated)
-                return;
-
-            _windowActivated = true;
-            TryCompleteInitialSetup();
+            StartInteractiveShowListener(interactiveShowEvent);
         }
 
         /// <summary>
-        /// ルート UI とウィンドウの両方が準備できてからページ表示する。
-        /// 片方だけだと NavigationView が描画されないことがある。
+        /// UI 初期化の唯一の入口。Win32 / タスクトレイ / ガンマはここより前に実行しない。
         /// </summary>
-        private void TryCompleteInitialSetup()
+        private void RootGrid_Loaded(object sender, RoutedEventArgs e)
         {
-            if (_initialSetupDone || !_rootGridReady || !_windowActivated)
+            if (_uiInitialized)
                 return;
 
-            _initialSetupDone = true;
-            Activated -= MainWindow_Activated;
+            _uiInitialized = true;
+            RootGrid.Loaded -= RootGrid_Loaded;
 
             AppWindow.ResizeClient(new SizeInt32(DefaultClientWidth, DefaultClientHeight));
             ConfigureMinimumWindowSize();
-            NavigateToPage("Time");
+            NavigateToPage("Time", force: true);
 
-            if (_startInBackground && _canHideToTray)
-                HideToTray();
-            else
-                ShowMainWindow();
+            // まず必ず表示して 1 フレーム描画する。非表示は描画完了後にのみ行う。
+            ShowMainWindow();
 
-            // 初回フレーム描画後にガンマを適用する（GDI 操作が WinUI 合成を壊さないようにする）。
             CompositionTarget.Rendering += OnFirstFrameRendered;
-
-            // 描画が遅延した環境向けに、1 フレーム後にもう一度レイアウトと表示を試みる。
-            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
-            {
-                if (_isExiting)
-                    return;
-
-                if (!_startInBackground || !_canHideToTray)
-                    ShowMainWindow();
-
-                RootGrid.UpdateLayout();
-                ContentFrame.UpdateLayout();
-            });
         }
 
         private void OnFirstFrameRendered(object? sender, object e)
+        {
+            if (_uiRenderedOnce)
+                return;
+
+            _uiRenderedOnce = true;
+            CompositionTarget.Rendering -= OnFirstFrameRendered;
+
+            InitializeTrayIfNeeded();
+            InitializeGammaIfNeeded();
+            ApplyBackgroundVisibilityPolicy();
+        }
+
+        /// <summary>
+        /// バックグラウンド起動時のみ、UI が一度描画されたあとでタスクトレイへ隠す。
+        /// </summary>
+        private void ApplyBackgroundVisibilityPolicy()
+        {
+            if (_userWantsVisible)
+                return;
+
+            if (_launchInBackgroundMode && _canHideToTray)
+                HideToTray();
+        }
+
+        private void RequestInteractiveShow()
+        {
+            _userWantsVisible = true;
+
+            if (!_uiInitialized)
+                return;
+
+            ShowMainWindow(bringToForeground: true, forceRefresh: true);
+
+            if (_uiRenderedOnce)
+                InitializeTrayIfNeeded();
+        }
+
+        private void InitializeTrayIfNeeded()
+        {
+            if (_trayInitialized)
+                return;
+
+            _trayInitialized = true;
+            SetupTrayIcon();
+            EnsureTrayIconVisible();
+        }
+
+        private void InitializeGammaIfNeeded()
         {
             if (_gammaInitialized)
                 return;
 
             _gammaInitialized = true;
-            CompositionTarget.Rendering -= OnFirstFrameRendered;
-
             GammaController.ResetGamma();
             ApplyCurrentGamma();
             ScheduleNextGammaCheck();
@@ -152,12 +171,13 @@ namespace App1
             _trayMessageWindow?.TrayIcon.Show();
         }
 
-        private void StartShowWindowListener(EventWaitHandle? showWindowEvent)
+        private void StartInteractiveShowListener(EventWaitHandle? interactiveShowEvent)
         {
-            if (showWindowEvent == null) return;
+            if (interactiveShowEvent == null)
+                return;
 
-            _showWindowListenerCts = new CancellationTokenSource();
-            var token = _showWindowListenerCts.Token;
+            _interactiveShowListenerCts = new CancellationTokenSource();
+            var token = _interactiveShowListenerCts.Token;
 
             Task.Run(() =>
             {
@@ -165,7 +185,7 @@ namespace App1
                 {
                     try
                     {
-                        if (!showWindowEvent.WaitOne(500))
+                        if (!interactiveShowEvent.WaitOne(500))
                             continue;
                     }
                     catch (ObjectDisposedException)
@@ -176,11 +196,7 @@ namespace App1
                     if (token.IsCancellationRequested || _isExiting)
                         break;
 
-                    DispatcherQueue.TryEnqueue(() =>
-                    {
-                        ShowMainWindow(bringToForeground: true);
-                        NavigateToPage("Time");
-                    });
+                    DispatcherQueue.TryEnqueue(RequestInteractiveShow);
                 }
             }, token);
         }
@@ -208,11 +224,7 @@ namespace App1
                 _hwnd = WindowNative.GetWindowHandle(this);
         }
 
-        /// <summary>
-        /// WinUI は Win32 の ShowWindow を使わず AppWindow API のみで表示する。
-        /// ShowWindow を HWND に対して呼ぶと白画面になる既知の不具合がある。
-        /// </summary>
-        private void ShowMainWindow(bool bringToForeground = false)
+        private void ShowMainWindow(bool bringToForeground = false, bool forceRefresh = false)
         {
             if (AppWindow.Presenter is OverlappedPresenter presenter)
                 presenter.Restore();
@@ -220,6 +232,15 @@ namespace App1
             AppWindow.IsShownInSwitchers = true;
             AppWindow.Show();
             Activate();
+
+            if (_uiInitialized)
+            {
+                if (forceRefresh)
+                    NavigateToPage(_currentPageTag, force: true);
+
+                RootGrid.UpdateLayout();
+                ContentFrame.UpdateLayout();
+            }
 
             if (bringToForeground)
             {
@@ -243,7 +264,7 @@ namespace App1
 
         private void HideToTray()
         {
-            if (!_canHideToTray)
+            if (!_canHideToTray || !_uiRenderedOnce)
                 return;
 
             AppWindow.IsShownInSwitchers = false;
@@ -253,12 +274,14 @@ namespace App1
 
         private void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
         {
-            if (_isExiting) return;
+            if (_isExiting)
+                return;
 
             if (!_canHideToTray)
                 return;
 
             args.Cancel = true;
+            _userWantsVisible = false;
             HideToTray();
         }
 
@@ -272,18 +295,14 @@ namespace App1
                 var tray = _trayMessageWindow.TrayIcon;
                 tray.OpenMainWindowRequested += () =>
                 {
-                    DispatcherQueue.TryEnqueue(() =>
-                    {
-                        ShowMainWindow(bringToForeground: true);
-                        NavigateToPage("Time");
-                    });
+                    DispatcherQueue.TryEnqueue(() => RequestInteractiveShow());
                 };
                 tray.OpenSettingsRequested += () =>
                 {
                     DispatcherQueue.TryEnqueue(() =>
                     {
-                        ShowMainWindow(bringToForeground: true);
-                        NavigateToPage("Settings");
+                        RequestInteractiveShow();
+                        NavigateToPage("Settings", force: true);
                     });
                 };
                 tray.ExitRequested += () =>
@@ -303,9 +322,9 @@ namespace App1
         {
             _isExiting = true;
             CompositionTarget.Rendering -= OnFirstFrameRendered;
-            _showWindowListenerCts?.Cancel();
-            _showWindowListenerCts?.Dispose();
-            _showWindowListenerCts = null;
+            _interactiveShowListenerCts?.Cancel();
+            _interactiveShowListenerCts?.Dispose();
+            _interactiveShowListenerCts = null;
 
             _timer.Stop();
             _trayMessageWindow?.Dispose();
@@ -328,9 +347,9 @@ namespace App1
                 NavigateToPage(tag);
         }
 
-        private void NavigateToPage(string tag)
+        private void NavigateToPage(string tag, bool force = false)
         {
-            if (_currentPageTag == tag && ContentFrame.CurrentSourcePageType != null)
+            if (!force && _currentPageTag == tag && ContentFrame.CurrentSourcePageType != null)
             {
                 UpdateNavSelection(tag);
                 return;
@@ -344,7 +363,7 @@ namespace App1
                 _ => typeof(TimePage)
             };
 
-            if (ContentFrame.CurrentSourcePageType != pageType)
+            if (force || ContentFrame.CurrentSourcePageType != pageType)
                 ContentFrame.Navigate(pageType, _appState);
 
             UpdateNavSelection(tag);

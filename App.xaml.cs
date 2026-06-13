@@ -1,4 +1,4 @@
-// v1.0.12
+// v1.0.13
 
 using Microsoft.UI.Xaml;
 using System;
@@ -20,7 +20,10 @@ namespace App1
             UpdateChecker.LatestReleaseApiUrl =
                 "https://api.github.com/repos/kazu-1234/BlueShift/releases/latest";
 
-            if (!SingleInstanceManager.TryBecomePrimaryInstance())
+            bool launchInBackground = HasCommandLineArg("--background");
+            bool requestInteractiveShow = !launchInBackground;
+
+            if (!SingleInstanceManager.TryBecomePrimaryInstance(requestInteractiveShow))
             {
                 Exit();
                 return;
@@ -28,8 +31,10 @@ namespace App1
 
             RegisterGammaResetOnExit();
 
-            bool startInBackground = HasCommandLineArg("--background");
-            m_window = new MainWindow(startInBackground, SingleInstanceManager.ShowWindowEvent);
+            m_window = new MainWindow(
+                launchInBackground,
+                requestInteractiveShow,
+                SingleInstanceManager.InteractiveShowEvent);
             m_window.Activate();
         }
 
