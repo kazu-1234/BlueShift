@@ -45,6 +45,7 @@ namespace App1.Views
                 ? Strings.Get("Status_Enabled")
                 : Strings.Get("Status_Disabled");
             IntensityStatusText.Text = _state.CurrentIntensityText;
+            ColorTemperatureStatusText.Text = _state.CurrentColorTemperatureText;
             ScheduleStatusText.Text = _state.ActiveScheduleText;
             NextTransitionStatusText.Text = _state.NextTransitionText;
 

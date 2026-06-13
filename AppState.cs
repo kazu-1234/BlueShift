@@ -17,12 +17,13 @@ namespace App1
 
         public Action? SavePatterns { get; set; }
         public Action? RefreshGamma { get; set; }
-        public Action<int>? PreviewGamma { get; set; }
+        public Action<GammaSettings>? PreviewGamma { get; set; }
         public Action? RescheduleTimer { get; set; }
 
         private string _statusMessage = string.Empty;
         private InfoBarSeverity _statusSeverity = InfoBarSeverity.Informational;
         private string _currentIntensityText = "—";
+        private string _currentColorTemperatureText = "—";
         private string _activeScheduleText = "—";
         private string _nextTransitionText = "—";
         private bool _isFilterEnabled = true;
@@ -67,6 +68,12 @@ namespace App1
             private set { _currentIntensityText = value; OnPropertyChanged(); }
         }
 
+        public string CurrentColorTemperatureText
+        {
+            get => _currentColorTemperatureText;
+            private set { _currentColorTemperatureText = value; OnPropertyChanged(); }
+        }
+
         public string ActiveScheduleText
         {
             get => _activeScheduleText;
@@ -82,12 +89,17 @@ namespace App1
         public void UpdateRuntimeStatus(
             string message,
             InfoBarSeverity severity,
-            int? intensity,
+            GammaSettings? appliedSettings,
             Pattern? activePattern)
         {
             StatusMessage = message;
             StatusSeverity = severity;
-            CurrentIntensityText = intensity.HasValue ? $"{intensity.Value}%" : Strings.Get("NotAvailable");
+            CurrentIntensityText = appliedSettings.HasValue
+                ? $"{appliedSettings.Value.Intensity}%"
+                : Strings.Get("NotAvailable");
+            CurrentColorTemperatureText = appliedSettings.HasValue
+                ? $"{appliedSettings.Value.ColorTemperatureKelvin}K"
+                : Strings.Get("NotAvailable");
             ActiveScheduleText = activePattern?.TimeRangeDisplay ?? Strings.Get("NotAvailable");
 
             var delay = ScheduleHelper.GetDelayUntilNextTransition(Patterns, DateTime.Now);

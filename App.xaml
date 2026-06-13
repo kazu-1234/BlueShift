@@ -68,7 +68,7 @@
                 <Setter Property="VerticalContentAlignment" Value="Center" />
                 <Setter Property="Padding" Value="0" />
                 <Setter Property="Margin" Value="0,0,0,8" />
-                <Setter Property="MinHeight" Value="72" />
+                <Setter Property="MinHeight" Value="120" />
                 <Setter Property="MinWidth" Value="0" />
             </Style>
 

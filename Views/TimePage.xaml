@@ -147,6 +147,27 @@
                                             Value="50" />
                                 </StackPanel>
 
+                                <StackPanel Spacing="8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Uid="Time_ColorTemperature" FontSize="14" Opacity="0.8" VerticalAlignment="Center" />
+                                        <TextBlock x:Name="NewColorTemperatureValue"
+                                                   Grid.Column="1"
+                                                   Text="6500K"
+                                                   FontSize="14"
+                                                   FontWeight="SemiBold"
+                                                   VerticalAlignment="Center" />
+                                    </Grid>
+                                    <Slider x:Name="NewColorTemperatureSlider"
+                                            Minimum="2700"
+                                            Maximum="6500"
+                                            StepFrequency="100"
+                                            Value="6500" />
+                                </StackPanel>
+
                                 <Button x:Uid="Time_AddButton"
                                         Click="AddPattern_Click"
                                         Style="{ThemeResource AccentButtonStyle}"
@@ -202,24 +223,46 @@
                                                                    TextWrapping="Wrap" />
                                                     </StackPanel>
 
-                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="8" MinWidth="0">
-                                                        <Grid>
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="*" />
-                                                                <ColumnDefinition Width="Auto" />
-                                                            </Grid.ColumnDefinitions>
-                                                            <TextBlock x:Uid="Time_ListIntensity" FontSize="12" Opacity="0.7" VerticalAlignment="Center" />
-                                                            <TextBlock Grid.Column="1"
-                                                                       Text="{x:Bind IntensityDisplay, Mode=OneWay}"
-                                                                       FontSize="12"
-                                                                       FontWeight="SemiBold"
-                                                                       VerticalAlignment="Center"
-                                                                       Margin="8,0,0,0" />
-                                                        </Grid>
-                                                        <Slider Minimum="0"
-                                                                Maximum="100"
-                                                                Value="{x:Bind Intensity, Mode=TwoWay}"
-                                                                Tag="{x:Bind Id}" />
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="10" MinWidth="0">
+                                                        <StackPanel Spacing="8">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock x:Uid="Time_ListIntensity" FontSize="12" Opacity="0.7" VerticalAlignment="Center" />
+                                                                <TextBlock Grid.Column="1"
+                                                                           Text="{x:Bind IntensityDisplay, Mode=OneWay}"
+                                                                           FontSize="12"
+                                                                           FontWeight="SemiBold"
+                                                                           VerticalAlignment="Center"
+                                                                           Margin="8,0,0,0" />
+                                                            </Grid>
+                                                            <Slider Minimum="0"
+                                                                    Maximum="100"
+                                                                    Value="{x:Bind Intensity, Mode=TwoWay}"
+                                                                    Tag="{x:Bind Id}" />
+                                                        </StackPanel>
+                                                        <StackPanel Spacing="8">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock x:Uid="Time_ListColorTemperature" FontSize="12" Opacity="0.7" VerticalAlignment="Center" />
+                                                                <TextBlock Grid.Column="1"
+                                                                           Text="{x:Bind ColorTemperatureDisplay, Mode=OneWay}"
+                                                                           FontSize="12"
+                                                                           FontWeight="SemiBold"
+                                                                           VerticalAlignment="Center"
+                                                                           Margin="8,0,0,0" />
+                                                            </Grid>
+                                                            <Slider Minimum="2700"
+                                                                    Maximum="6500"
+                                                                    StepFrequency="100"
+                                                                    Value="{x:Bind ColorTemperatureKelvin, Mode=TwoWay}"
+                                                                    Tag="{x:Bind Id}" />
+                                                        </StackPanel>
                                                     </StackPanel>
 
                                                     <Button Grid.Column="2"

@@ -25,9 +25,7 @@ namespace App1
             public ushort[] Blue;
         }
 
-        /// <summary>
-        /// 強制終了後も残りうるガンマ補正を標準の線形ランプへ戻す。
-        /// </summary>
+        /// <summary>強制終了後も残りうるガンマ補正を標準の線形ランプへ戻す。</summary>
         public static void ResetGamma()
         {
             ApplyRamp(CreateIdentityRamp());
@@ -35,7 +33,23 @@ namespace App1
 
         public static void SetGamma(int intensity)
         {
-            ApplyRamp(CreateFilteredRamp(intensity));
+            SetGamma(new GammaSettings
+            {
+                Intensity = intensity,
+                ColorTemperatureKelvin = GammaSettings.DefaultColorTemperatureKelvin
+            });
+        }
+
+        public static void SetGamma(GammaSettings settings)
+        {
+            settings = settings.Clamp();
+            if (settings.Intensity <= 0)
+            {
+                ResetGamma();
+                return;
+            }
+
+            ApplyRamp(CreateFilteredRamp(settings));
         }
 
         private static RAMP CreateIdentityRamp()
@@ -58,16 +72,34 @@ namespace App1
             return ramp;
         }
 
-        private static RAMP CreateFilteredRamp(int intensity)
+        /// <summary>色温度（K）を RGB 乗数へ変換。6500K で中立。</summary>
+        private static (double Red, double Green, double Blue) GetTemperatureMultipliers(int kelvin)
+        {
+            kelvin = Math.Clamp(kelvin, GammaSettings.MinColorTemperatureKelvin, GammaSettings.MaxColorTemperatureKelvin);
+            if (kelvin >= GammaSettings.DefaultColorTemperatureKelvin)
+                return (1.0, 1.0, 1.0);
+
+            double warmness = (GammaSettings.DefaultColorTemperatureKelvin - kelvin)
+                / (double)(GammaSettings.DefaultColorTemperatureKelvin - GammaSettings.MinColorTemperatureKelvin);
+
+            return (
+                1.0 + warmness * 0.12,
+                1.0 - warmness * 0.03,
+                1.0 - warmness * 0.35);
+        }
+
+        private static RAMP CreateFilteredRamp(GammaSettings settings)
         {
             var ramp = CreateIdentityRamp();
-            intensity = Math.Clamp(intensity, 0, 100);
+            int intensity = settings.Intensity;
+            var (tempRed, tempGreen, tempBlue) = GetTemperatureMultipliers(settings.ColorTemperatureKelvin);
 
             for (int i = 1; i < 256; i++)
             {
-                double redValue = i * 255;
-                double greenValue = i * 255 * (1.0 - intensity / 100.0 * 0.2);
-                double blueValue = i * 255 * (1.0 - intensity / 100.0 * 0.8);
+                double baseValue = i * 255;
+                double redValue = baseValue * tempRed;
+                double greenValue = baseValue * (1.0 - intensity / 100.0 * 0.2) * tempGreen;
+                double blueValue = baseValue * (1.0 - intensity / 100.0 * 0.8) * tempBlue;
 
                 ramp.Red[i] = (ushort)Math.Min(redValue, 65535);
                 ramp.Green[i] = (ushort)Math.Min(greenValue, 65535);

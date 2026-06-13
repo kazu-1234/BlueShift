@@ -100,6 +100,15 @@
   <data name="Time_Intensity.Text" xml:space="preserve">
     <value>適用強度</value>
   </data>
+  <data name="Time_ColorTemperature.Text" xml:space="preserve">
+    <value>色温度</value>
+  </data>
+  <data name="Time_ColorTemperatureDesc.Text" xml:space="preserve">
+    <value>低いほど暖色、6500K が標準</value>
+  </data>
+  <data name="Time_ListColorTemperature.Text" xml:space="preserve">
+    <value>色温度</value>
+  </data>
   <data name="Time_AddButton.Content" xml:space="preserve">
     <value>スケジュールを追加</value>
   </data>
@@ -163,6 +172,9 @@
   <data name="Info_Intensity.Text" xml:space="preserve">
     <value>適用強度</value>
   </data>
+  <data name="Info_ColorTemperature.Text" xml:space="preserve">
+    <value>色温度</value>
+  </data>
   <data name="Info_Schedule.Text" xml:space="preserve">
     <value>適用スケジュール</value>
   </data>
@@ -191,7 +203,7 @@
     <value>スケジュールがありません。機能は待機中です。</value>
   </data>
   <data name="Status_Applied" xml:space="preserve">
-    <value>現在の適用強度: {0}%（適用元: {1}）</value>
+    <value>現在の適用: 強度 {0}% / 色温度 {1}K（{2}）</value>
   </data>
   <data name="Delay_HoursMinutes" xml:space="preserve">
     <value>約 {0} 時間 {1} 分後</value>
