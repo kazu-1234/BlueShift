@@ -1,3 +1,4 @@
+using App1;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -14,11 +15,18 @@ namespace App1.Views
 {
     public sealed partial class TimePage : Page
     {
+        private enum SliderAdjustmentKind
+        {
+            Intensity,
+            ColorTemperature
+        }
+
         private AppState? _state;
         private bool _isInitializing;
         private readonly HashSet<Slider> _adjustingSliders = new();
         private readonly HashSet<Slider> _wheelAdjustingSliders = new();
         private readonly HashSet<Slider> _bindingSliders = new();
+        private readonly Dictionary<Slider, SliderAdjustmentKind> _sliderKinds = new();
 
         public TimePage()
         {
@@ -27,7 +35,8 @@ namespace App1.Views
             _pointerCaptureLostHandler = Slider_PointerCaptureLost;
 
             InitializeComponent();
-            AttachSliderInteractions(NewIntensitySlider);
+            AttachSliderInteractions(NewIntensitySlider, SliderAdjustmentKind.Intensity);
+            AttachSliderInteractions(NewColorTemperatureSlider, SliderAdjustmentKind.ColorTemperature);
             PatternsList.ContainerContentChanging += PatternsList_ContainerContentChanging;
         }
 
@@ -47,6 +56,7 @@ namespace App1.Views
             ApplyFilterToggleLabels();
             PatternsList.ItemsSource = _state.Patterns;
             FilterToggle.IsOn = _state.IsFilterEnabled;
+            UpdateNewColorTemperatureValue();
 
             _state.PropertyChanged -= State_PropertyChanged;
             _state.PropertyChanged += State_PropertyChanged;
@@ -54,7 +64,6 @@ namespace App1.Views
             UpdateEmptyState();
             UpdateStatusFromState();
 
-            // ListView のバインド完了後に現在時刻の強度へ復帰する
             DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
             {
                 _isInitializing = false;
@@ -77,10 +86,10 @@ namespace App1.Views
         {
             if (args.InRecycleQueue)
             {
-                if (args.ItemContainer is ListViewItem recycledContainer
-                    && FindDescendantSlider(recycledContainer) is Slider recycledSlider)
+                if (args.ItemContainer is ListViewItem recycledContainer)
                 {
-                    DetachSliderInteractions(recycledSlider);
+                    foreach (var slider in FindDescendantSliders(recycledContainer))
+                        DetachSliderInteractions(slider);
                 }
 
                 return;
@@ -95,31 +104,38 @@ namespace App1.Views
                 return;
             }
 
-            if (FindDescendantSlider(container) is Slider slider)
-                AttachSliderInteractions(slider);
+            var sliders = FindDescendantSliders(container);
+            if (sliders.Count >= 1)
+                AttachSliderInteractions(sliders[0], SliderAdjustmentKind.Intensity);
+            if (sliders.Count >= 2)
+                AttachSliderInteractions(sliders[1], SliderAdjustmentKind.ColorTemperature);
         }
 
-        private static Slider? FindDescendantSlider(DependencyObject root)
+        private static List<Slider> FindDescendantSliders(DependencyObject root)
+        {
+            var sliders = new List<Slider>();
+            CollectDescendantSliders(root, sliders);
+            return sliders;
+        }
+
+        private static void CollectDescendantSliders(DependencyObject root, List<Slider> sliders)
         {
             int count = VisualTreeHelper.GetChildrenCount(root);
             for (int i = 0; i < count; i++)
             {
                 var child = VisualTreeHelper.GetChild(root, i);
                 if (child is Slider slider)
-                    return slider;
-
-                if (FindDescendantSlider(child) is Slider found)
-                    return found;
+                    sliders.Add(slider);
+                else
+                    CollectDescendantSliders(child, sliders);
             }
-
-            return null;
         }
 
-        private void AttachSliderInteractions(Slider slider)
+        private void AttachSliderInteractions(Slider slider, SliderAdjustmentKind kind)
         {
             DetachSliderInteractions(slider);
+            _sliderKinds[slider] = kind;
 
-            // Thumb 等がイベントを処理済みでもドラッグ開始を検知する
             slider.AddHandler(UIElement.PointerPressedEvent, _pointerPressedHandler, true);
             slider.AddHandler(UIElement.PointerReleasedEvent, _pointerReleasedHandler, true);
             slider.AddHandler(UIElement.PointerCaptureLostEvent, _pointerCaptureLostHandler, true);
@@ -134,6 +150,7 @@ namespace App1.Views
             slider.RemoveHandler(UIElement.PointerCaptureLostEvent, _pointerCaptureLostHandler);
             slider.PointerWheelChanged -= Slider_PointerWheelChanged;
             slider.ValueChanged -= AnySlider_ValueChanged;
+            _sliderKinds.Remove(slider);
         }
 
         private void Slider_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -168,7 +185,7 @@ namespace App1.Views
 
             if (GetPatternFromSlider(slider) is Pattern pattern)
             {
-                pattern.Intensity = (int)slider.Value;
+                ApplySliderValueToPattern(slider, pattern, (int)slider.Value);
                 _state?.PersistPatterns();
             }
 
@@ -232,7 +249,8 @@ namespace App1.Views
                 Time = timeStr,
                 HasEndTime = hasEndTime,
                 EndTime = endTimeStr,
-                Intensity = (int)NewIntensitySlider.Value
+                Intensity = (int)NewIntensitySlider.Value,
+                ColorTemperatureKelvin = (int)NewColorTemperatureSlider.Value
             });
 
             var sorted = _state.Patterns.OrderBy(p => p.Time).ToList();
@@ -265,14 +283,13 @@ namespace App1.Views
             if (_bindingSliders.Contains(slider))
                 return;
 
-            if (ReferenceEquals(slider, NewIntensitySlider))
-                NewIntensityValue.Text = $"{(int)e.NewValue}%";
+            UpdateSliderValueLabel(slider, (int)e.NewValue);
 
             if (!IsUserAdjustingSlider(slider))
                 return;
 
             _adjustingSliders.Add(slider);
-            ApplySliderGammaFeedback(slider, (int)e.NewValue);
+            ApplySliderGammaFeedback(slider);
         }
 
         private void EndSliderAdjustment(Slider slider)
@@ -282,24 +299,89 @@ namespace App1.Views
 
             if (GetPatternFromSlider(slider) is Pattern pattern)
             {
-                pattern.Intensity = (int)slider.Value;
+                ApplySliderValueToPattern(slider, pattern, (int)slider.Value);
                 _state?.PersistPatterns();
             }
 
             _state?.RefreshGamma?.Invoke();
         }
 
-        /// <summary>
-        /// マウス操作中のみ一時プレビュー（有効/無効に関わらず画面ガンマを反映）。
-        /// ホイール・ページ表示時のバインドではガンマを変えない。
-        /// </summary>
-        private void ApplySliderGammaFeedback(Slider slider, int intensity)
+        private void ApplySliderGammaFeedback(Slider slider)
         {
             if (_state == null || _wheelAdjustingSliders.Contains(slider))
                 return;
 
             if (IsUserAdjustingSlider(slider))
-                _state.PreviewGamma?.Invoke(intensity);
+                _state.PreviewGamma?.Invoke(BuildPreviewSettings(slider));
+        }
+
+        private GammaSettings BuildPreviewSettings(Slider adjustedSlider)
+        {
+            if (ReferenceEquals(adjustedSlider, NewIntensitySlider))
+            {
+                return new GammaSettings
+                {
+                    Intensity = (int)NewIntensitySlider.Value,
+                    ColorTemperatureKelvin = (int)NewColorTemperatureSlider.Value
+                };
+            }
+
+            if (ReferenceEquals(adjustedSlider, NewColorTemperatureSlider))
+            {
+                return new GammaSettings
+                {
+                    Intensity = (int)NewIntensitySlider.Value,
+                    ColorTemperatureKelvin = (int)NewColorTemperatureSlider.Value
+                };
+            }
+
+            if (GetPatternFromSlider(adjustedSlider) is Pattern pattern)
+            {
+                if (GetSliderKind(adjustedSlider) == SliderAdjustmentKind.ColorTemperature)
+                {
+                    return new GammaSettings
+                    {
+                        Intensity = pattern.Intensity,
+                        ColorTemperatureKelvin = (int)adjustedSlider.Value
+                    };
+                }
+
+                return new GammaSettings
+                {
+                    Intensity = (int)adjustedSlider.Value,
+                    ColorTemperatureKelvin = pattern.ColorTemperatureKelvin
+                };
+            }
+
+            return GammaSettings.Off;
+        }
+
+        private void ApplySliderValueToPattern(Slider slider, Pattern pattern, int value)
+        {
+            if (GetSliderKind(slider) == SliderAdjustmentKind.ColorTemperature)
+                pattern.ColorTemperatureKelvin = value;
+            else
+                pattern.Intensity = value;
+        }
+
+        private void UpdateSliderValueLabel(Slider slider, int value)
+        {
+            if (ReferenceEquals(slider, NewIntensitySlider))
+                NewIntensityValue.Text = $"{value}%";
+            else if (ReferenceEquals(slider, NewColorTemperatureSlider))
+                NewColorTemperatureValue.Text = $"{value}K";
+        }
+
+        private void UpdateNewColorTemperatureValue()
+        {
+            NewColorTemperatureValue.Text = $"{(int)NewColorTemperatureSlider.Value}K";
+        }
+
+        private SliderAdjustmentKind GetSliderKind(Slider slider)
+        {
+            return _sliderKinds.TryGetValue(slider, out var kind)
+                ? kind
+                : SliderAdjustmentKind.Intensity;
         }
 
         private bool IsUserAdjustingSlider(Slider slider)

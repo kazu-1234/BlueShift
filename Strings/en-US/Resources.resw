@@ -100,6 +100,15 @@
   <data name="Time_Intensity.Text" xml:space="preserve">
     <value>Intensity</value>
   </data>
+  <data name="Time_ColorTemperature.Text" xml:space="preserve">
+    <value>Color temperature</value>
+  </data>
+  <data name="Time_ColorTemperatureDesc.Text" xml:space="preserve">
+    <value>Lower is warmer; 6500K is neutral</value>
+  </data>
+  <data name="Time_ListColorTemperature.Text" xml:space="preserve">
+    <value>Color temp.</value>
+  </data>
   <data name="Time_AddButton.Content" xml:space="preserve">
     <value>Add schedule</value>
   </data>
@@ -163,6 +172,9 @@
   <data name="Info_Intensity.Text" xml:space="preserve">
     <value>Intensity</value>
   </data>
+  <data name="Info_ColorTemperature.Text" xml:space="preserve">
+    <value>Color temperature</value>
+  </data>
   <data name="Info_Schedule.Text" xml:space="preserve">
     <value>Active schedule</value>
   </data>
@@ -191,7 +203,7 @@
     <value>No schedules configured. The feature is idle.</value>
   </data>
   <data name="Status_Applied" xml:space="preserve">
-    <value>Current intensity: {0}% (from: {1})</value>
+    <value>Current intensity: {0}% / color temp. {1}K (from: {2})</value>
   </data>
   <data name="Delay_HoursMinutes" xml:space="preserve">
     <value>In about {0} h {1} min</value>

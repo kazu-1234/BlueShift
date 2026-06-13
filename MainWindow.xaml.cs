@@ -68,10 +68,10 @@ namespace App1
             _appState = new AppState(_settings, _patterns);
             _appState.SavePatterns = () => { };
             _gammaTransition = new GammaTransitionService();
-            _appState.PreviewGamma = intensity =>
+            _appState.PreviewGamma = settings =>
             {
                 _gammaPreviewActive = true;
-                _gammaTransition.ApplyImmediate(intensity);
+                _gammaTransition.ApplyImmediate(settings);
             };
             _appState.RefreshGamma = () =>
             {
@@ -546,7 +546,7 @@ namespace App1
 
             if (!_settings.IsFilterEnabled)
             {
-                _gammaTransition.AnimateTo(0);
+                _gammaTransition.AnimateTo(GammaSettings.Off);
                 _appState.UpdateRuntimeStatus(
                     Strings.Get("Status_FilterDisabled"),
                     Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational,
@@ -557,7 +557,7 @@ namespace App1
 
             if (!_patterns.Any())
             {
-                _gammaTransition.AnimateTo(0);
+                _gammaTransition.AnimateTo(GammaSettings.Off);
                 _appState.UpdateRuntimeStatus(
                     Strings.Get("Status_NoSchedule"),
                     Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational,
@@ -569,15 +569,20 @@ namespace App1
             var currentPattern = ScheduleHelper.ResolveActivePattern(_patterns, DateTime.Now);
             if (currentPattern == null)
             {
-                _gammaTransition.AnimateTo(0);
+                _gammaTransition.AnimateTo(GammaSettings.Off);
                 return;
             }
 
-            _gammaTransition.AnimateTo(currentPattern.Intensity);
+            var settings = GammaSettings.FromPattern(currentPattern);
+            _gammaTransition.AnimateTo(settings);
             _appState.UpdateRuntimeStatus(
-                Strings.Format("Status_Applied", currentPattern.Intensity, currentPattern.TimeRangeDisplay),
+                Strings.Format(
+                    "Status_Applied",
+                    settings.Intensity,
+                    settings.ColorTemperatureKelvin,
+                    currentPattern.TimeRangeDisplay),
                 Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success,
-                currentPattern.Intensity,
+                settings,
                 currentPattern);
         }
 

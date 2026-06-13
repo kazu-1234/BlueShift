@@ -62,14 +62,29 @@ namespace App1
             }
         }
 
+        private int _colorTemperatureKelvin = GammaSettings.DefaultColorTemperatureKelvin;
+        /// <summary>色温度（K）。2700（暖色）〜 6500（標準）。</summary>
+        public int ColorTemperatureKelvin
+        {
+            get => _colorTemperatureKelvin;
+            set
+            {
+                _colorTemperatureKelvin = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ColorTemperatureDisplay));
+            }
+        }
+
+        public string IntensityDisplay => $"{Intensity}%";
+
+        public string ColorTemperatureDisplay => $"{ColorTemperatureKelvin}K";
+
         public string TimeRangeDisplay =>
             HasEndTime
                 ? Strings.Format("Pattern_TimeRange", Time, EndTime)
                 : Strings.Format("Pattern_TimeRangeOpen", Time);
 
         public bool ShowEndTime => HasEndTime;
-
-        public string IntensityDisplay => $"{Intensity}%";
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
