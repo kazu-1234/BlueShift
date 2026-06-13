@@ -279,6 +279,19 @@ namespace App1
                 _settings.AutoStart = isAutoStart;
                 _settings.Save();
             }
+
+            if (isAutoStart)
+            {
+                AutoStartMode activeMode = StartupManager.GetActiveMode(_settings.UseLogonTask);
+                bool useLogonTask = activeMode == AutoStartMode.LogonTask;
+                if (useLogonTask != _settings.UseLogonTask)
+                {
+                    _settings.UseLogonTask = useLogonTask;
+                    _settings.Save();
+                }
+            }
+
+            StartupManager.ValidateAutoStart(_settings.AutoStart, _settings.UseLogonTask);
         }
 
         private void EnsureHwnd()

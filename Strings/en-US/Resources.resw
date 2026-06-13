@@ -122,7 +122,25 @@
     <value>Start automatically at logon</value>
   </data>
   <data name="Settings_AutoStartDesc.Text" xml:space="preserve">
-    <value>Runs in the background at logon via Task Scheduler</value>
+    <value>Starts BlueShift in the background when you sign in to Windows</value>
+  </data>
+  <data name="Settings_UseLogonTask.Content" xml:space="preserve">
+    <value>Run as logon task instead of startup registry entry</value>
+  </data>
+  <data name="Settings_AutostartMode_Label.Text" xml:space="preserve">
+    <value>Registration method</value>
+  </data>
+  <data name="Settings_AutostartMode_Registry" xml:space="preserve">
+    <value>Startup (registry)</value>
+  </data>
+  <data name="Settings_AutostartMode_Task" xml:space="preserve">
+    <value>Logon task</value>
+  </data>
+  <data name="Settings_AutostartMode_Disabled" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="Settings_AutostartPath_Label.Text" xml:space="preserve">
+    <value>Registered path</value>
   </data>
   <data name="Settings_SectionUpdate.Text" xml:space="preserve">
     <value>Updates</value>

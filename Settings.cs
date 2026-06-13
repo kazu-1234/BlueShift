@@ -8,6 +8,8 @@ namespace App1
     public class Settings
     {
         public bool AutoStart { get; set; } = false;
+        /// <summary>true: ログオンタスク / false: スタートアップ（Run レジストリ）</summary>
+        public bool UseLogonTask { get; set; } = false;
         public bool IsFilterEnabled { get; set; } = true;
         public List<Pattern> Patterns { get; set; } = new List<Pattern>();
 
