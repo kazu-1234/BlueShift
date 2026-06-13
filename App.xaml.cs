@@ -1,7 +1,8 @@
-// v1.0.14
+// v1.0.15
 
 using Microsoft.UI.Xaml;
 using System;
+using System.Diagnostics;
 
 namespace App1
 {
@@ -13,6 +14,18 @@ namespace App1
         public App()
         {
             InitializeComponent();
+            UnhandledException += App_UnhandledException;
+        }
+
+        private void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+        {
+            Debug.WriteLine(e.Exception);
+            ReportStartupError(e.Exception?.Message ?? "Unknown error");
+        }
+
+        internal static void ReportStartupError(string message)
+        {
+            Debug.WriteLine($"BlueShift error: {message}");
         }
 
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
@@ -31,11 +44,19 @@ namespace App1
 
             RegisterGammaResetOnExit();
 
-            m_window = new MainWindow(
-                launchInBackground,
-                requestInteractiveShow,
-                SingleInstanceManager.InteractiveShowEvent);
-            m_window.Activate();
+            try
+            {
+                m_window = new MainWindow(
+                    launchInBackground,
+                    requestInteractiveShow,
+                    SingleInstanceManager.InteractiveShowEvent);
+                m_window.Activate();
+            }
+            catch (Exception ex)
+            {
+                ReportStartupError(ex.ToString());
+                throw;
+            }
         }
 
         private static bool HasCommandLineArg(string arg)

@@ -15,8 +15,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <WindowsPackageType>None</WindowsPackageType>
     <ApplicationDefaultLanguage>ja-JP</ApplicationDefaultLanguage>
-    <Version>1.0.14</Version>
-    <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <Version>1.0.15</Version>
+    <DefineConstants>DISABLE_XAML_GENERATED_MAIN;DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="Assets\BlueShift.ico">

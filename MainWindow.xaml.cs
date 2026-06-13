@@ -92,15 +92,22 @@ namespace App1
             AppWindow.ResizeClient(new SizeInt32(DefaultClientWidth, DefaultClientHeight));
             ConfigureMinimumWindowSize();
 
-            // Loaded 処理中の Navigate / UpdateLayout は MeasureOverride を壊すため次フレームへ defer する。
-            DispatcherQueue.TryEnqueue(() =>
+            // Loaded 処理中の Navigate は MeasureOverride を壊すため低優先度で defer する。
+            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
             {
                 if (_isExiting)
                     return;
 
-                NavigateToPage("Time", force: true);
-                ShowMainWindow();
-                CompositionTarget.Rendering += OnFirstFrameRendered;
+                try
+                {
+                    NavigateToPage("Time", force: true);
+                    ShowMainWindow();
+                    CompositionTarget.Rendering += OnFirstFrameRendered;
+                }
+                catch (Exception ex)
+                {
+                    Title = $"BlueShift - {ex.Message}";
+                }
             });
         }
 
