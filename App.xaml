@@ -126,6 +126,25 @@
                 <Setter Property="Margin" Value="-24,0,0,0" />
             </Style>
 
+            <!-- 設定タブ専用: ラベルをスイッチ左側に置く行 -->
+            <Style x:Key="SettingsPageToggleHostStyle" TargetType="StackPanel">
+                <Setter Property="Orientation" Value="Horizontal" />
+                <Setter Property="Spacing" Value="8" />
+                <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+
+            <Style x:Key="SettingsPageToggleLabelStyle" TargetType="TextBlock">
+                <Setter Property="MinWidth" Value="32" />
+                <Setter Property="TextAlignment" Value="Right" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+
+            <Style x:Key="SettingsPageToggleSwitchOnlyStyle" TargetType="ToggleSwitch">
+                <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+
             <Style x:Key="SettingsRowActionButtonStyle" TargetType="Button">
                 <Setter Property="HorizontalAlignment" Value="Right" />
                 <Setter Property="VerticalAlignment" Value="Center" />
