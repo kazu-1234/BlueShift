@@ -1,8 +1,5 @@
 #!/bin/sh
-# コミットメッセージ末尾に自動付与される co-author トレーラーを除去する
-msgfile="$1"
-[ -z "$msgfile" ] || [ ! -f "$msgfile" ] && exit 0
-tmp=$(mktemp)
+# filter-branch --msg-filter 用
 while IFS= read -r line || [ -n "$line" ]; do
   case "$line" in
     Co-authored-by:*[Cc]ursor*) ;;
@@ -12,5 +9,4 @@ while IFS= read -r line || [ -n "$line" ]; do
     *cursoragent@cursor.com*) ;;
     *) printf '%s\n' "$line" ;;
   esac
-done < "$msgfile" > "$tmp" && mv "$tmp" "$msgfile"
-exit 0
+done
