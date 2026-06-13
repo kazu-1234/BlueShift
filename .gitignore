@@ -1,0 +1,17 @@
+# Build
+bin/
+obj/
+publish/
+*.user
+*.suo
+
+# Visual Studio
+.vs/
+*.sln.docstates
+
+# Backup
+*.bak
+
+# OS
+Thumbs.db
+Desktop.ini
