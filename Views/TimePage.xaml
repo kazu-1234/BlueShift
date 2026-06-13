@@ -144,9 +144,7 @@
                                     <Slider x:Name="NewIntensitySlider"
                                             Minimum="0"
                                             Maximum="100"
-                                            Value="50"
-                                            ValueChanged="NewIntensitySlider_ValueChanged"
-                                            PointerCaptureLost="NewIntensitySlider_PointerCaptureLost" />
+                                            Value="50" />
                                 </StackPanel>
 
                                 <Button x:Uid="Time_AddButton"
@@ -221,9 +219,7 @@
                                                         <Slider Minimum="0"
                                                                 Maximum="100"
                                                                 Value="{x:Bind Intensity, Mode=TwoWay}"
-                                                                Tag="{x:Bind Id}"
-                                                                ValueChanged="Slider_ValueChanged"
-                                                                PointerCaptureLost="Slider_PointerCaptureLost" />
+                                                                Tag="{x:Bind Id}" />
                                                     </StackPanel>
 
                                                     <Button Grid.Column="2"
