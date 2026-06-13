@@ -104,8 +104,17 @@ namespace App1
                 try
                 {
                     NavigateToPage("Time", force: true);
-                    ShowMainWindow();
-                    CompositionTarget.Rendering += OnFirstFrameRendered;
+
+                    if (_userWantsVisible)
+                    {
+                        ShowMainWindow();
+                        CompositionTarget.Rendering += OnFirstFrameRendered;
+                    }
+                    else
+                    {
+                        // ログオン自動起動: ウィンドウ非表示のままトレイ・ガンマを初期化
+                        DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Normal, InitializeBackgroundServices);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -128,6 +137,20 @@ namespace App1
         }
 
         /// <summary>
+        /// --background 起動時: 画面描画を待たずタスクトレイとガンマを有効化する。
+        /// </summary>
+        private void InitializeBackgroundServices()
+        {
+            if (_isExiting || _uiRenderedOnce)
+                return;
+
+            _uiRenderedOnce = true;
+            InitializeTrayIfNeeded();
+            InitializeGammaIfNeeded();
+            ApplyBackgroundVisibilityPolicy();
+        }
+
+        /// <summary>
         /// バックグラウンド起動時のみ、UI が一度描画されたあとでタスクトレイへ隠す。
         /// </summary>
         private void ApplyBackgroundVisibilityPolicy()
@@ -135,8 +158,13 @@ namespace App1
             if (_userWantsVisible)
                 return;
 
-            if (_launchInBackgroundMode && _canHideToTray)
-                HideToTray();
+            if (!_launchInBackgroundMode)
+                return;
+
+            // ログオン自動起動: タスクトレイ常駐のみ（ウィンドウは非表示のまま）
+            AppWindow.IsShownInSwitchers = false;
+            AppWindow.Hide();
+            EnsureTrayIconVisible();
         }
 
         private void RequestInteractiveShow()

@@ -50,7 +50,10 @@ namespace App1
                     launchInBackground,
                     requestInteractiveShow,
                     SingleInstanceManager.InteractiveShowEvent);
-                m_window.Activate();
+
+                // ログオン時自動起動（--background）は GUI を出さない
+                if (!launchInBackground)
+                    m_window.Activate();
             }
             catch (Exception ex)
             {

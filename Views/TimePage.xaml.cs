@@ -1,3 +1,4 @@
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -41,19 +42,29 @@ namespace App1.Views
             ApplyFilterToggleLabels();
             PatternsList.ItemsSource = _state.Patterns;
             FilterToggle.IsOn = _state.IsFilterEnabled;
-            _isInitializing = false;
 
             _state.PropertyChanged -= State_PropertyChanged;
             _state.PropertyChanged += State_PropertyChanged;
 
             UpdateEmptyState();
             UpdateStatusFromState();
+
+            // ListView のバインド完了後に現在時刻の強度へ復帰する
+            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+            {
+                _isInitializing = false;
+                _state?.RefreshGamma?.Invoke();
+            });
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
             if (_state != null)
+            {
                 _state.PropertyChanged -= State_PropertyChanged;
+                _state.RefreshGamma?.Invoke();
+            }
+
             base.OnNavigatedFrom(e);
         }
 
@@ -84,9 +95,8 @@ namespace App1.Views
 
             _bindingSliders.Add(slider);
             slider.Tag = pattern.Id;
-            slider.Value = pattern.Intensity;
-            _bindingSliders.Remove(slider);
             AttachSliderInteractions(slider);
+            _bindingSliders.Remove(slider);
         }
 
         private static Slider? FindDescendantSlider(DependencyObject root)
@@ -234,7 +244,6 @@ namespace App1.Views
             if (_isInitializing || _state == null || sender is not Slider slider)
                 return;
 
-            // ListView 再利用時のバインド更新ではガンマ・保存を行わない
             if (_bindingSliders.Contains(slider))
                 return;
 
@@ -257,8 +266,11 @@ namespace App1.Views
         private void NewIntensitySlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         {
             NewIntensityValue.Text = $"{(int)e.NewValue}%";
-            if (sender is Slider slider)
-                ApplySliderGammaFeedback(slider, (int)e.NewValue);
+
+            if (_isInitializing || sender is not Slider slider)
+                return;
+
+            ApplySliderGammaFeedback(slider, (int)e.NewValue);
         }
 
         private void NewIntensitySlider_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
@@ -267,24 +279,14 @@ namespace App1.Views
         }
 
         /// <summary>
-        /// ドラッグ中は一時プレビュー。ホイール操作時はガンマを変えず強度の数値調整のみ。
+        /// ドラッグ中のみ一時プレビュー。ホイール・ページ表示時のバインドではガンマを変えない。
         /// </summary>
         private void ApplySliderGammaFeedback(Slider slider, int intensity)
         {
-            if (_state == null)
-                return;
-
-            // ホイールはスライダー値の変更のみ（ブルーライトの一時適用なし）
-            if (_wheelAdjustingSliders.Contains(slider))
+            if (_state == null || _wheelAdjustingSliders.Contains(slider))
                 return;
 
             if (_draggingSliders.Contains(slider))
-            {
-                _state.PreviewGamma?.Invoke(intensity);
-                return;
-            }
-
-            if (_state.IsFilterEnabled && _state.Patterns.Any())
                 _state.PreviewGamma?.Invoke(intensity);
         }
 
