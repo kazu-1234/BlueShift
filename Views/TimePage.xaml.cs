@@ -20,8 +20,14 @@ namespace App1.Views
 
         private void ApplyFilterToggleLabels()
         {
-            FilterToggle.OnContent = Strings.Get("Toggle_On");
-            FilterToggle.OffContent = Strings.Get("Toggle_Off");
+            UpdateFilterToggleLabel();
+        }
+
+        private void UpdateFilterToggleLabel()
+        {
+            FilterToggleLabel.Text = FilterToggle.IsOn
+                ? Strings.Get("Toggle_On")
+                : Strings.Get("Toggle_Off");
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -34,6 +40,7 @@ namespace App1.Views
             ApplyFilterToggleLabels();
             PatternsList.ItemsSource = _state.Patterns;
             FilterToggle.IsOn = _state.IsFilterEnabled;
+            UpdateFilterToggleLabel();
             _isInitializing = false;
 
             _state.PropertyChanged -= State_PropertyChanged;
@@ -78,6 +85,7 @@ namespace App1.Views
 
         private void FilterToggle_Toggled(object sender, RoutedEventArgs e)
         {
+            UpdateFilterToggleLabel();
             if (_isInitializing || _state == null) return;
             _state.IsFilterEnabled = FilterToggle.IsOn;
         }
@@ -161,6 +169,11 @@ namespace App1.Views
         private void NewIntensitySlider_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
         {
             _state?.RefreshGamma?.Invoke();
+        }
+
+        private void Slider_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
+        {
+            SliderWheelHelper.HandlePointerWheelChanged(sender, e);
         }
 
         private static Pattern? GetPatternFromSlider(Slider slider)

@@ -19,11 +19,13 @@
                         <TextBlock x:Uid="Settings_AutoStart" FontWeight="SemiBold" />
                         <TextBlock x:Uid="Settings_AutoStartDesc" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
                     </StackPanel>
-                    <Grid Grid.Column="1" Style="{StaticResource SettingsRowActionHostStyle}">
+                    <StackPanel Grid.Column="1" Style="{StaticResource SettingsRowToggleHostStyle}">
+                        <TextBlock x:Name="AutoStartToggleLabel"
+                                   Style="{StaticResource SettingsToggleLabelStyle}" />
                         <ToggleSwitch x:Name="AutoStartToggle"
                                       Style="{StaticResource CompactSettingsToggleSwitchStyle}"
                                       Toggled="AutoStartToggle_Toggled" />
-                    </Grid>
+                    </StackPanel>
                 </Grid>
             </Border>
 
