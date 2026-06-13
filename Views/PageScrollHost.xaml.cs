@@ -1,5 +1,7 @@
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 
 namespace App1.Views
 {
@@ -7,22 +9,27 @@ namespace App1.Views
     {
         private ScrollViewer? _scrollViewer;
         private FrameworkElement? _contentRoot;
+        private bool _scrollEnabled;
+        private bool _updateScheduled;
 
         public PageScrollHost()
         {
             InitializeComponent();
             Loaded += OnLoaded;
-            SizeChanged += (_, __) => UpdateScrollability();
+            SizeChanged += (_, __) => ScheduleUpdateScrollability();
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             _scrollViewer = GetTemplateChild("PART_ScrollViewer") as ScrollViewer;
             if (_scrollViewer != null)
-                _scrollViewer.SizeChanged += (_, __) => UpdateScrollability();
+            {
+                _scrollViewer.SizeChanged += (_, __) => ScheduleUpdateScrollability();
+                _scrollViewer.PointerWheelChanged += ScrollViewer_PointerWheelChanged;
+            }
 
             WatchContentRoot(Content as FrameworkElement);
-            UpdateScrollability();
+            ScheduleUpdateScrollability();
         }
 
         protected override void OnContentChanged(object oldContent, object newContent)
@@ -33,7 +40,7 @@ namespace App1.Views
                 UnwatchContentRoot(oldRoot);
 
             WatchContentRoot(newContent as FrameworkElement);
-            UpdateScrollability();
+            ScheduleUpdateScrollability();
         }
 
         private void WatchContentRoot(FrameworkElement? root)
@@ -57,12 +64,31 @@ namespace App1.Views
 
         private void ContentRoot_Loaded(object sender, RoutedEventArgs e)
         {
-            UpdateScrollability();
+            ScheduleUpdateScrollability();
         }
 
         private void ContentRoot_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            UpdateScrollability();
+            ScheduleUpdateScrollability();
+        }
+
+        private void ScrollViewer_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
+        {
+            if (!_scrollEnabled)
+                e.Handled = true;
+        }
+
+        private void ScheduleUpdateScrollability()
+        {
+            if (_updateScheduled)
+                return;
+
+            _updateScheduled = true;
+            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+            {
+                _updateScheduled = false;
+                UpdateScrollability();
+            });
         }
 
         private void UpdateScrollability()
@@ -71,14 +97,54 @@ namespace App1.Views
                 return;
 
             _scrollViewer.UpdateLayout();
+            _contentRoot?.UpdateLayout();
 
-            bool needsScroll = _scrollViewer.ExtentHeight > _scrollViewer.ViewportHeight + 0.5;
-            _scrollViewer.VerticalScrollBarVisibility = needsScroll
-                ? ScrollBarVisibility.Auto
-                : ScrollBarVisibility.Disabled;
+            bool needsScroll = ComputeNeedsScroll();
+            ApplyScrollState(needsScroll);
 
             if (!needsScroll && _scrollViewer.VerticalOffset > 0)
                 _scrollViewer.ChangeView(null, 0, null, disableAnimation: true);
+
+            // レイアウト確定後にもう一度判定する
+            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+            {
+                if (_scrollViewer == null)
+                    return;
+
+                bool needsScrollAfterLayout = ComputeNeedsScroll();
+                ApplyScrollState(needsScrollAfterLayout);
+
+                if (!needsScrollAfterLayout && _scrollViewer.VerticalOffset > 0)
+                    _scrollViewer.ChangeView(null, 0, null, disableAnimation: true);
+            });
+        }
+
+        private bool ComputeNeedsScroll()
+        {
+            if (_scrollViewer == null)
+                return false;
+
+            double viewportHeight = _scrollViewer.ViewportHeight;
+            if (viewportHeight <= 0)
+                return false;
+
+            double contentHeight = _contentRoot?.ActualHeight ?? 0;
+            if (contentHeight <= 0)
+                contentHeight = _scrollViewer.ExtentHeight;
+
+            return contentHeight > viewportHeight + 0.5;
+        }
+
+        private void ApplyScrollState(bool enabled)
+        {
+            if (_scrollViewer == null)
+                return;
+
+            _scrollEnabled = enabled;
+            _scrollViewer.VerticalScrollMode = enabled ? ScrollMode.Auto : ScrollMode.Disabled;
+            _scrollViewer.VerticalScrollBarVisibility = enabled
+                ? ScrollBarVisibility.Auto
+                : ScrollBarVisibility.Disabled;
         }
     }
 }

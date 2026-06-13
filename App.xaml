@@ -30,7 +30,7 @@
 
             <Style x:Key="PageHostScrollViewerStyle" TargetType="ScrollViewer">
                 <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
-                <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+                <Setter Property="VerticalScrollBarVisibility" Value="Disabled" />
                 <Setter Property="HorizontalAlignment" Value="Stretch" />
                 <Setter Property="VerticalAlignment" Value="Stretch" />
                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
