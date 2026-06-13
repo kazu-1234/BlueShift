@@ -17,7 +17,6 @@ namespace App1
 
         public Action? SavePatterns { get; set; }
         public Action? RefreshGamma { get; set; }
-        public Action<int>? PreviewGamma { get; set; }
         public Action? RescheduleTimer { get; set; }
 
         private string _statusMessage = string.Empty;

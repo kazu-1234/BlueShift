@@ -20,14 +20,8 @@ namespace App1.Views
 
         private void ApplyFilterToggleLabels()
         {
-            UpdateFilterToggleLabel();
-        }
-
-        private void UpdateFilterToggleLabel()
-        {
-            FilterToggleLabel.Text = FilterToggle.IsOn
-                ? Strings.Get("Toggle_On")
-                : Strings.Get("Toggle_Off");
+            FilterToggle.OnContent = Strings.Get("Toggle_On");
+            FilterToggle.OffContent = Strings.Get("Toggle_Off");
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -40,7 +34,6 @@ namespace App1.Views
             ApplyFilterToggleLabels();
             PatternsList.ItemsSource = _state.Patterns;
             FilterToggle.IsOn = _state.IsFilterEnabled;
-            UpdateFilterToggleLabel();
             _isInitializing = false;
 
             _state.PropertyChanged -= State_PropertyChanged;
@@ -85,7 +78,6 @@ namespace App1.Views
 
         private void FilterToggle_Toggled(object sender, RoutedEventArgs e)
         {
-            UpdateFilterToggleLabel();
             if (_isInitializing || _state == null) return;
             _state.IsFilterEnabled = FilterToggle.IsOn;
         }
@@ -147,7 +139,8 @@ namespace App1.Views
             if (GetPatternFromSlider(slider) is Pattern pattern)
                 pattern.Intensity = (int)e.NewValue;
 
-            _state.PreviewGamma?.Invoke((int)e.NewValue);
+            if (_state.IsFilterEnabled && _state.Patterns.Any())
+                GammaController.SetGamma((int)e.NewValue);
         }
 
         private void Slider_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
@@ -163,17 +156,13 @@ namespace App1.Views
         private void NewIntensitySlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         {
             NewIntensityValue.Text = $"{(int)e.NewValue}%";
-            _state?.PreviewGamma?.Invoke((int)e.NewValue);
+            if (_state?.IsFilterEnabled == true && _state.Patterns.Any())
+                GammaController.SetGamma((int)e.NewValue);
         }
 
         private void NewIntensitySlider_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
         {
             _state?.RefreshGamma?.Invoke();
-        }
-
-        private void Slider_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
-        {
-            SliderWheelHelper.HandlePointerWheelChanged(sender, e);
         }
 
         private static Pattern? GetPatternFromSlider(Slider slider)

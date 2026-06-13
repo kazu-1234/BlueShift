@@ -19,14 +19,8 @@ namespace App1.Views
 
         private void ApplyToggleLabels()
         {
-            UpdateAutoStartToggleLabel();
-        }
-
-        private void UpdateAutoStartToggleLabel()
-        {
-            AutoStartToggleLabel.Text = AutoStartToggle.IsOn
-                ? Strings.Get("Toggle_On")
-                : Strings.Get("Toggle_Off");
+            AutoStartToggle.OnContent = Strings.Get("Toggle_On");
+            AutoStartToggle.OffContent = Strings.Get("Toggle_Off");
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -38,14 +32,12 @@ namespace App1.Views
             _isInitializing = true;
             ApplyToggleLabels();
             AutoStartToggle.IsOn = _state.Settings.AutoStart;
-            UpdateAutoStartToggleLabel();
             VersionText.Text = Strings.Format("Version_Format", UpdateChecker.CurrentVersion);
             _isInitializing = false;
         }
 
         private void AutoStartToggle_Toggled(object sender, RoutedEventArgs e)
         {
-            UpdateAutoStartToggleLabel();
             if (_isInitializing || _state == null) return;
 
             StartupManager.SetAutoStart(AutoStartToggle.IsOn);
