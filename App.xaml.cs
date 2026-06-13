@@ -1,4 +1,4 @@
-// v1.0.25
+// v1.0.26
 
 using Microsoft.UI.Xaml;
 using System;
