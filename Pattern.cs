@@ -79,6 +79,16 @@ namespace App1
 
         public string ColorTemperatureDisplay => $"{ColorTemperatureKelvin}K";
 
+        /// <summary>未設定(0)や範囲外を標準色温度へ補正する。</summary>
+        public void NormalizeColorTemperature()
+        {
+            if (ColorTemperatureKelvin < GammaSettings.MinColorTemperatureKelvin
+                || ColorTemperatureKelvin > GammaSettings.MaxColorTemperatureKelvin)
+            {
+                ColorTemperatureKelvin = GammaSettings.DefaultColorTemperatureKelvin;
+            }
+        }
+
         public string TimeRangeDisplay =>
             HasEndTime
                 ? Strings.Format("Pattern_TimeRange", Time, EndTime)

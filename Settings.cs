@@ -29,7 +29,11 @@ namespace App1
                 {
                     string json = File.ReadAllText(SettingsFilePath);
                     var settings = JsonConvert.DeserializeObject<Settings>(json);
-                    return settings ?? new Settings();
+                    if (settings == null)
+                        return new Settings();
+
+                    settings.NormalizePatterns();
+                    return settings;
                 }
             }
             catch { }
@@ -65,6 +69,13 @@ namespace App1
                 File.WriteAllText(SettingsFilePath, json);
             }
             catch { }
+        }
+
+        /// <summary>旧設定ファイルに色温度が無い場合などの正規化。</summary>
+        public void NormalizePatterns()
+        {
+            foreach (var pattern in Patterns)
+                pattern.NormalizeColorTemperature();
         }
     }
 }

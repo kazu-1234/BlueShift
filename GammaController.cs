@@ -43,7 +43,12 @@ namespace App1
         public static void SetGamma(GammaSettings settings)
         {
             settings = settings.Clamp();
-            if (settings.Intensity <= 0)
+
+            bool hasIntensity = settings.Intensity > 0;
+            bool hasTemperatureShift =
+                settings.ColorTemperatureKelvin < GammaSettings.DefaultColorTemperatureKelvin;
+
+            if (!hasIntensity && !hasTemperatureShift)
             {
                 ResetGamma();
                 return;
@@ -72,38 +77,37 @@ namespace App1
             return ramp;
         }
 
-        /// <summary>色温度（K）を RGB 乗数へ変換。6500K で中立。</summary>
-        private static (double Red, double Green, double Blue) GetTemperatureMultipliers(int kelvin)
-        {
-            kelvin = Math.Clamp(kelvin, GammaSettings.MinColorTemperatureKelvin, GammaSettings.MaxColorTemperatureKelvin);
-            if (kelvin >= GammaSettings.DefaultColorTemperatureKelvin)
-                return (1.0, 1.0, 1.0);
-
-            double warmness = (GammaSettings.DefaultColorTemperatureKelvin - kelvin)
-                / (double)(GammaSettings.DefaultColorTemperatureKelvin - GammaSettings.MinColorTemperatureKelvin);
-
-            return (
-                1.0 + warmness * 0.12,
-                1.0 - warmness * 0.03,
-                1.0 - warmness * 0.35);
-        }
-
         private static RAMP CreateFilteredRamp(GammaSettings settings)
         {
             var ramp = CreateIdentityRamp();
             int intensity = settings.Intensity;
-            var (tempRed, tempGreen, tempBlue) = GetTemperatureMultipliers(settings.ColorTemperatureKelvin);
+            var (tempRed, tempGreen, tempBlue) =
+                ColorTemperatureHelper.GetMultipliersRelativeToDefault(settings.ColorTemperatureKelvin);
+
+            double blueIntensityFactor = 1.0 - intensity / 100.0 * 0.8;
+            double greenIntensityFactor = 1.0 - intensity / 100.0 * 0.2;
 
             for (int i = 1; i < 256; i++)
             {
-                double baseValue = i * 255;
-                double redValue = baseValue * tempRed;
-                double greenValue = baseValue * (1.0 - intensity / 100.0 * 0.2) * tempGreen;
-                double blueValue = baseValue * (1.0 - intensity / 100.0 * 0.8) * tempBlue;
+                double linear = i * 257.0;
 
-                ramp.Red[i] = (ushort)Math.Min(redValue, 65535);
-                ramp.Green[i] = (ushort)Math.Min(greenValue, 65535);
-                ramp.Blue[i] = (ushort)Math.Min(blueValue, 65535);
+                double redValue = linear * tempRed;
+                double greenValue = linear * greenIntensityFactor * tempGreen;
+                double blueValue = linear * blueIntensityFactor * tempBlue;
+
+                // クリップでチャンネル比が崩れないよう、ピークで正規化する
+                double peak = Math.Max(redValue, Math.Max(greenValue, blueValue));
+                if (peak > 65535)
+                {
+                    double scale = 65535.0 / peak;
+                    redValue *= scale;
+                    greenValue *= scale;
+                    blueValue *= scale;
+                }
+
+                ramp.Red[i] = (ushort)Math.Round(Math.Clamp(redValue, 0, 65535));
+                ramp.Green[i] = (ushort)Math.Round(Math.Clamp(greenValue, 0, 65535));
+                ramp.Blue[i] = (ushort)Math.Round(Math.Clamp(blueValue, 0, 65535));
             }
 
             return ramp;
