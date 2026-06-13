@@ -17,7 +17,7 @@
 
         <StackPanel Grid.Row="0" Spacing="8">
             <TextBlock x:Uid="Time_SectionToggle" Style="{StaticResource SettingsSectionHeaderStyle}" />
-            <Border Style="{StaticResource SettingsRowCardStyle}">
+            <Border Style="{StaticResource CompactSettingsCardStyle}">
             <Grid Style="{StaticResource SettingsAlignedRowGridStyle}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" MinWidth="0" />
@@ -27,14 +27,12 @@
                     <TextBlock x:Uid="Time_EnableFilter" FontWeight="SemiBold" />
                     <TextBlock x:Uid="Time_EnableFilterDesc" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
                 </StackPanel>
-                <StackPanel Grid.Column="1"
-                      Style="{StaticResource SettingsRowToggleHostStyle}">
-                    <TextBlock x:Name="FilterToggleLabel"
-                               Style="{StaticResource SettingsToggleLabelStyle}" />
+                <Grid Grid.Column="1"
+                      Style="{StaticResource SettingsRowActionHostStyle}">
                     <ToggleSwitch x:Name="FilterToggle"
                                   Style="{StaticResource CompactSettingsToggleSwitchStyle}"
                                   Toggled="FilterToggle_Toggled" />
-                </StackPanel>
+                </Grid>
             </Grid>
             </Border>
         </StackPanel>
@@ -158,15 +156,16 @@
                                 <TextBlock x:Name="NewIntensityValue"
                                            Grid.Column="1"
                                            Text="50%"
-                                           Style="{StaticResource IntensityValueTextStyle}" />
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
                             </Grid>
                             <Slider x:Name="NewIntensitySlider"
                                     Minimum="0"
                                     Maximum="100"
                                     Value="50"
                                     ValueChanged="NewIntensitySlider_ValueChanged"
-                                    PointerCaptureLost="NewIntensitySlider_PointerCaptureLost"
-                                    PointerWheelChanged="Slider_PointerWheelChanged" />
+                                    PointerCaptureLost="NewIntensitySlider_PointerCaptureLost" />
                         </StackPanel>
 
                         <Button x:Uid="Time_AddButton"
@@ -232,8 +231,9 @@
                                                 <TextBlock x:Uid="Time_ListIntensity" FontSize="12" Opacity="0.7" VerticalAlignment="Center" />
                                                 <TextBlock Grid.Column="1"
                                                            Text="{x:Bind IntensityDisplay, Mode=OneWay}"
-                                                           Style="{StaticResource IntensityValueTextStyle}"
                                                            FontSize="12"
+                                                           FontWeight="SemiBold"
+                                                           VerticalAlignment="Center"
                                                            Margin="8,0,0,0" />
                                             </Grid>
                                             <Slider Minimum="0"
@@ -241,8 +241,7 @@
                                                     Value="{x:Bind Intensity, Mode=OneWay}"
                                                     Tag="{x:Bind}"
                                                     ValueChanged="Slider_ValueChanged"
-                                                    PointerCaptureLost="Slider_PointerCaptureLost"
-                                                    PointerWheelChanged="Slider_PointerWheelChanged" />
+                                                    PointerCaptureLost="Slider_PointerCaptureLost" />
                                         </StackPanel>
 
                                         <Button Grid.Column="2"

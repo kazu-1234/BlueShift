@@ -28,7 +28,6 @@ namespace App1
         private readonly ObservableCollection<Pattern> _patterns;
         private readonly AppState _appState;
         private readonly DispatcherTimer _timer;
-        private readonly GammaTransitionService _gammaTransition;
 
         /// <summary>ログオン時タスクなど --background で起動した場合 true。</summary>
         private readonly bool _launchInBackgroundMode;
@@ -63,8 +62,6 @@ namespace App1
             _patterns = new ObservableCollection<Pattern>(_settings.Patterns.OrderBy(p => p.Time));
             _appState = new AppState(_settings, _patterns);
             _appState.SavePatterns = () => { };
-            _gammaTransition = new GammaTransitionService();
-            _appState.PreviewGamma = intensity => _gammaTransition.ApplyImmediate(intensity);
             _appState.RefreshGamma = ApplyCurrentGamma;
             _appState.RescheduleTimer = ScheduleNextGammaCheck;
 
@@ -336,7 +333,6 @@ namespace App1
             _interactiveShowListenerCts = null;
 
             _timer.Stop();
-            _gammaTransition.Stop();
             _trayMessageWindow?.Dispose();
             _trayMessageWindow = null;
             GammaController.ResetGamma();
@@ -406,7 +402,7 @@ namespace App1
         {
             if (!_settings.IsFilterEnabled)
             {
-                _gammaTransition.AnimateTo(0);
+                GammaController.ResetGamma();
                 _appState.UpdateRuntimeStatus(
                     Strings.Get("Status_FilterDisabled"),
                     Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational,
@@ -417,7 +413,7 @@ namespace App1
 
             if (!_patterns.Any())
             {
-                _gammaTransition.AnimateTo(0);
+                GammaController.ResetGamma();
                 _appState.UpdateRuntimeStatus(
                     Strings.Get("Status_NoSchedule"),
                     Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational,
@@ -429,11 +425,11 @@ namespace App1
             var currentPattern = ScheduleHelper.ResolveActivePattern(_patterns, DateTime.Now);
             if (currentPattern == null)
             {
-                _gammaTransition.AnimateTo(0);
+                GammaController.ResetGamma();
                 return;
             }
 
-            _gammaTransition.AnimateTo(currentPattern.Intensity);
+            GammaController.SetGamma(currentPattern.Intensity);
             _appState.UpdateRuntimeStatus(
                 Strings.Format("Status_Applied", currentPattern.Intensity, currentPattern.TimeRangeDisplay),
                 Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success,
