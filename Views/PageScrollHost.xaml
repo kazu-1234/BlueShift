@@ -14,8 +14,6 @@
                 <ContentPresenter HorizontalAlignment="Stretch"
                                   VerticalAlignment="Top"
                                   HorizontalContentAlignment="Stretch"
-                                  MaxWidth="{StaticResource PageContentMaxWidth}"
-                                  Margin="24,16,24,24"
                                   Content="{TemplateBinding Content}"
                                   ContentTemplate="{TemplateBinding ContentTemplate}" />
             </ScrollViewer>
