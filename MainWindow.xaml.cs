@@ -43,6 +43,7 @@ namespace App1
         private bool _uiRenderedOnce;
         private bool _trayInitialized;
         private bool _gammaInitialized;
+        private bool _gammaPreviewActive;
         private IntPtr _hwnd;
         private string _currentPageTag = "Time";
         private CancellationTokenSource? _interactiveShowListenerCts;
@@ -64,8 +65,16 @@ namespace App1
             _appState = new AppState(_settings, _patterns);
             _appState.SavePatterns = () => { };
             _gammaTransition = new GammaTransitionService();
-            _appState.PreviewGamma = intensity => _gammaTransition.ApplyImmediate(intensity);
-            _appState.RefreshGamma = ApplyCurrentGamma;
+            _appState.PreviewGamma = intensity =>
+            {
+                _gammaPreviewActive = true;
+                _gammaTransition.ApplyImmediate(intensity);
+            };
+            _appState.RefreshGamma = () =>
+            {
+                _gammaPreviewActive = false;
+                ApplyCurrentGamma();
+            };
             _appState.RescheduleTimer = ScheduleNextGammaCheck;
 
             StartupManager.MigrateFromLegacyIfNeeded();
@@ -77,8 +86,19 @@ namespace App1
             AppWindow.Closing += AppWindow_Closing;
             RootGrid.Loaded += RootGrid_Loaded;
             ContentFrame.NavigationFailed += ContentFrame_NavigationFailed;
+            Activated += MainWindow_Activated;
 
             StartInteractiveShowListener(interactiveShowEvent);
+        }
+
+        /// <summary>--background 起動時、Activate 直後にウィンドウを隠してフラッシュを防ぐ。</summary>
+        private void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
+        {
+            if (_userWantsVisible || !_launchInBackgroundMode)
+                return;
+
+            AppWindow.IsShownInSwitchers = false;
+            AppWindow.Hide();
         }
 
         /// <summary>
@@ -418,6 +438,9 @@ namespace App1
 
         private void Timer_Tick(object? sender, object e)
         {
+            if (_gammaPreviewActive)
+                return;
+
             ApplyCurrentGamma();
             ScheduleNextGammaCheck();
         }
@@ -432,6 +455,9 @@ namespace App1
 
         private void ApplyCurrentGamma()
         {
+            if (_gammaPreviewActive)
+                return;
+
             if (!_settings.IsFilterEnabled)
             {
                 _gammaTransition.AnimateTo(0);

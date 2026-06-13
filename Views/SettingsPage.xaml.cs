@@ -35,8 +35,16 @@ namespace App1.Views
         {
             if (_isInitializing || _state == null) return;
 
-            StartupManager.SetAutoStart(AutoStartToggle.IsOn);
-            _state.Settings.AutoStart = AutoStartToggle.IsOn;
+            bool requested = AutoStartToggle.IsOn;
+            if (!StartupManager.SetAutoStart(requested))
+            {
+                _isInitializing = true;
+                AutoStartToggle.IsOn = !requested;
+                _isInitializing = false;
+                return;
+            }
+
+            _state.Settings.AutoStart = requested;
             _state.Settings.Save();
         }
 

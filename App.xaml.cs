@@ -1,4 +1,4 @@
-// v1.0.16
+// v1.0.23
 
 using Microsoft.UI.Xaml;
 using System;
@@ -51,9 +51,8 @@ namespace App1
                     requestInteractiveShow,
                     SingleInstanceManager.InteractiveShowEvent);
 
-                // ログオン時自動起動（--background）は GUI を出さない
-                if (!launchInBackground)
-                    m_window.Activate();
+                // WinUI の初期化には Activate が必要。バックグラウンド起動は直後に非表示へ。
+                m_window.Activate();
             }
             catch (Exception ex)
             {
