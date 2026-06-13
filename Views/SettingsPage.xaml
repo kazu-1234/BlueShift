@@ -7,46 +7,52 @@
     VerticalAlignment="Stretch">
     <views:PageScrollHost>
         <StackPanel Style="{StaticResource PageBaseStackPanelStyle}">
-            <TextBlock x:Uid="Settings_SectionStartup" Style="{StaticResource SettingsSectionHeaderStyle}" />
+            <StackPanel Spacing="8">
+                <TextBlock x:Uid="Settings_SectionStartup" Style="{StaticResource SettingsSectionHeaderStyle}" />
 
-            <Border Style="{StaticResource CompactSettingsCardStyle}">
-                <Grid Style="{StaticResource SettingsAlignedRowGridStyle}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" MinWidth="0" />
-                        <ColumnDefinition Width="{StaticResource SettingsActionColumnWidth}" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Spacing="4" VerticalAlignment="Center" MinWidth="0">
-                        <TextBlock x:Uid="Settings_AutoStart" FontWeight="SemiBold" />
-                        <TextBlock x:Uid="Settings_AutoStartDesc" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
-                    </StackPanel>
-                    <Grid Grid.Column="1" Style="{StaticResource SettingsRowActionHostStyle}">
-                        <ToggleSwitch x:Name="AutoStartToggle"
-                                      Style="{StaticResource SettingsPageToggleSwitchStyle}"
-                                      Toggled="AutoStartToggle_Toggled" />
+                <Border Style="{StaticResource CompactSettingsCardStyle}">
+                    <Grid Style="{StaticResource SettingsAlignedRowGridStyle}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" MinWidth="0" />
+                            <ColumnDefinition Width="{StaticResource SettingsActionColumnWidth}" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="4" VerticalAlignment="Center" MinWidth="0">
+                            <TextBlock x:Uid="Settings_AutoStart" FontWeight="SemiBold" />
+                            <TextBlock x:Uid="Settings_AutoStartDesc" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Style="{StaticResource SettingsPageToggleHostStyle}">
+                            <TextBlock x:Name="AutoStartToggleLabel"
+                                       Style="{StaticResource SettingsPageToggleLabelStyle}" />
+                            <ToggleSwitch x:Name="AutoStartToggle"
+                                          Style="{StaticResource SettingsPageToggleSwitchOnlyStyle}"
+                                          Toggled="AutoStartToggle_Toggled" />
+                        </StackPanel>
                     </Grid>
-                </Grid>
-            </Border>
+                </Border>
+            </StackPanel>
 
-            <TextBlock x:Uid="Settings_SectionUpdate" Style="{StaticResource SettingsSectionHeaderStyle}" />
+            <StackPanel Spacing="8">
+                <TextBlock x:Uid="Settings_SectionUpdate" Style="{StaticResource SettingsSectionHeaderStyle}" />
 
-            <Border Style="{StaticResource CompactSettingsCardStyle}">
-                <Grid Style="{StaticResource SettingsAlignedRowGridStyle}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" MinWidth="0" />
-                        <ColumnDefinition Width="{StaticResource SettingsActionColumnWidth}" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Spacing="4" VerticalAlignment="Center" MinWidth="0">
-                        <TextBlock x:Name="VersionText" FontWeight="SemiBold" />
-                        <TextBlock x:Uid="Settings_UpdateDesc" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
-                    </StackPanel>
-                    <Grid Grid.Column="1" Style="{StaticResource SettingsRowActionHostStyle}">
-                        <Button x:Name="CheckUpdateButton"
-                                x:Uid="Settings_CheckUpdate"
-                                Style="{StaticResource SettingsRowActionButtonStyle}"
-                                Click="CheckUpdateButton_Click" />
+                <Border Style="{StaticResource CompactSettingsCardStyle}">
+                    <Grid Style="{StaticResource SettingsAlignedRowGridStyle}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" MinWidth="0" />
+                            <ColumnDefinition Width="{StaticResource SettingsActionColumnWidth}" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="4" VerticalAlignment="Center" MinWidth="0">
+                            <TextBlock x:Name="VersionText" FontWeight="SemiBold" />
+                            <TextBlock x:Uid="Settings_UpdateDesc" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <Grid Grid.Column="1" Style="{StaticResource SettingsRowActionHostStyle}">
+                            <Button x:Name="CheckUpdateButton"
+                                    x:Uid="Settings_CheckUpdate"
+                                    Style="{StaticResource SettingsRowActionButtonStyle}"
+                                    Click="CheckUpdateButton_Click" />
+                        </Grid>
                     </Grid>
-                </Grid>
-            </Border>
+                </Border>
+            </StackPanel>
 
             <InfoBar x:Name="UpdateInfoBar"
                      IsOpen="False"
