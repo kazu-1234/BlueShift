@@ -36,6 +36,14 @@ namespace App1
             ApplySettings(_appliedSettings);
         }
 
+        /// <summary>OS によるガンマリセット後など、同一設定でも再適用する。</summary>
+        public void ForceApply(GammaSettings settings)
+        {
+            StopAnimation();
+            _appliedSettings = settings.Clamp();
+            ApplySettings(_appliedSettings);
+        }
+
         /// <summary>指定強度のみへ遷移する（色温度は中立）。</summary>
         public void AnimateTo(int targetIntensity, TimeSpan? duration = null)
         {
