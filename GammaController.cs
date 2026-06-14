@@ -8,6 +8,9 @@ namespace App1
         [DllImport("gdi32.dll")]
         private static extern bool SetDeviceGammaRamp(IntPtr hdc, ref RAMP lpRamp);
 
+        [DllImport("gdi32.dll")]
+        private static extern bool GetDeviceGammaRamp(IntPtr hdc, ref RAMP lpRamp);
+
         [DllImport("user32.dll")]
         private static extern IntPtr GetDC(IntPtr hWnd);
 
@@ -56,6 +59,82 @@ namespace App1
 
             ApplyRamp(CreateFilteredRamp(settings));
         }
+
+        /// <summary>OS や他アプリによりガンマが戻されていないかを概算で判定する。</summary>
+        public static bool IsLikelyApplied(GammaSettings settings)
+        {
+            settings = settings.Clamp();
+
+            bool shouldApply = settings.Intensity > 0
+                || settings.ColorTemperatureKelvin < GammaSettings.DefaultColorTemperatureKelvin;
+
+            if (!TryGetCurrentRamp(out var actual))
+                return false;
+
+            if (!shouldApply)
+                return IsNearIdentity(actual);
+
+            var expected = CreateFilteredRamp(settings);
+            return RampsAreSimilar(expected, actual);
+        }
+
+        private static bool TryGetCurrentRamp(out RAMP ramp)
+        {
+            ramp = default;
+            IntPtr dc = GetDC(IntPtr.Zero);
+            if (dc == IntPtr.Zero)
+                return false;
+
+            try
+            {
+                ramp = new RAMP
+                {
+                    Red = new ushort[256],
+                    Green = new ushort[256],
+                    Blue = new ushort[256]
+                };
+
+                return GetDeviceGammaRamp(dc, ref ramp);
+            }
+            finally
+            {
+                ReleaseDC(IntPtr.Zero, dc);
+            }
+        }
+
+        private static bool IsNearIdentity(RAMP ramp)
+        {
+            foreach (int index in SampleIndices)
+            {
+                ushort expected = (ushort)Math.Min(index * 257, 65535);
+                if (Math.Abs(ramp.Red[index] - expected) > RampTolerance)
+                    return false;
+                if (Math.Abs(ramp.Green[index] - expected) > RampTolerance)
+                    return false;
+                if (Math.Abs(ramp.Blue[index] - expected) > RampTolerance)
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static bool RampsAreSimilar(RAMP expected, RAMP actual)
+        {
+            foreach (int index in SampleIndices)
+            {
+                if (Math.Abs(expected.Red[index] - actual.Red[index]) > RampTolerance)
+                    return false;
+                if (Math.Abs(expected.Green[index] - actual.Green[index]) > RampTolerance)
+                    return false;
+                if (Math.Abs(expected.Blue[index] - actual.Blue[index]) > RampTolerance)
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static readonly int[] SampleIndices = { 64, 128, 192, 255 };
+        private const int RampTolerance = 80;
 
         private static RAMP CreateIdentityRamp()
         {

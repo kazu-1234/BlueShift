@@ -15,6 +15,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Windows.UI;
 using Windows.Graphics;
+using Windows.UI.ViewManagement;
 using WinRT.Interop;
 
 namespace App1
@@ -26,10 +27,14 @@ namespace App1
         private const double MinimumWindowWidth = 870;
         private const double MinimumWindowHeight = 600;
 
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19;
+
         private readonly Settings _settings;
         private readonly ObservableCollection<Pattern> _patterns;
         private readonly AppState _appState;
         private readonly DispatcherTimer _timer;
+        private readonly DispatcherTimer _gammaWatchdogTimer;
         private readonly GammaTransitionService _gammaTransition;
 
         /// <summary>ログオン時タスクなど --background で起動した場合 true。</summary>
@@ -39,6 +44,7 @@ namespace App1
         private bool _userWantsVisible;
 
         private TrayMessageWindow? _trayMessageWindow;
+        private SystemEventWindow? _systemEventWindow;
         private bool _canHideToTray;
         private bool _isExiting;
         private bool _uiInitialized;
@@ -49,6 +55,8 @@ namespace App1
         private IntPtr _hwnd;
         private string _currentPageTag = "Time";
         private CancellationTokenSource? _interactiveShowListenerCts;
+        private CancellationTokenSource? _gammaReapplyCts;
+        private UISettings? _uiSettings;
 
         public MainWindow(
             bool launchInBackground = false,
@@ -86,6 +94,12 @@ namespace App1
             _timer = new DispatcherTimer();
             _timer.Tick += Timer_Tick;
 
+            _gammaWatchdogTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(30)
+            };
+            _gammaWatchdogTimer.Tick += GammaWatchdogTimer_Tick;
+
             AppWindow.Closing += AppWindow_Closing;
             RootGrid.Loaded += RootGrid_Loaded;
             ContentFrame.NavigationFailed += ContentFrame_NavigationFailed;
@@ -97,6 +111,12 @@ namespace App1
         /// <summary>--background 起動時、Activate 直後にウィンドウを隠してフラッシュを防ぐ。</summary>
         private void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
         {
+            if (args.WindowActivationState != WindowActivationState.Deactivated)
+            {
+                UpdateTitleBarColors();
+                EnsureGammaApplied();
+            }
+
             if (_userWantsVisible || !_launchInBackgroundMode)
                 return;
 
@@ -219,9 +239,27 @@ namespace App1
                 return;
 
             _gammaInitialized = true;
+            InitializeSystemEventMonitor();
             GammaController.ResetGamma();
             ApplyCurrentGamma();
             ScheduleNextGammaCheck();
+            _gammaWatchdogTimer.Start();
+        }
+
+        private void InitializeSystemEventMonitor()
+        {
+            if (_systemEventWindow != null)
+                return;
+
+            try
+            {
+                _systemEventWindow = new SystemEventWindow();
+                _systemEventWindow.SystemDisplayStateChanged += OnSystemDisplayStateChanged;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"System event monitor init failed: {ex.Message}");
+            }
         }
 
         private void ContentFrame_NavigationFailed(object sender, NavigationFailedEventArgs e)
@@ -281,6 +319,14 @@ namespace App1
 
             AppWindow.TitleBar.ExtendsContentIntoTitleBar = false;
             RootGrid.ActualThemeChanged += (_, _) => UpdateTitleBarColors();
+            NavView.ActualThemeChanged += (_, _) => UpdateTitleBarColors();
+
+            _uiSettings = new UISettings();
+            _uiSettings.ColorValuesChanged += (_, _) =>
+            {
+                DispatcherQueue.TryEnqueue(UpdateTitleBarColors);
+            };
+
             UpdateTitleBarColors();
         }
 
@@ -289,8 +335,11 @@ namespace App1
             if (!AppWindowTitleBar.IsCustomizationSupported())
                 return;
 
+            bool isDark = IsDarkTheme();
+            ApplyImmersiveDarkMode(isDark);
+
             var titleBar = AppWindow.TitleBar;
-            if (IsDarkTheme())
+            if (isDark)
             {
                 var background = Color.FromArgb(255, 32, 32, 32);
                 var foreground = Colors.White;
@@ -302,18 +351,18 @@ namespace App1
                 titleBar.ForegroundColor = foreground;
                 titleBar.InactiveBackgroundColor = background;
                 titleBar.InactiveForegroundColor = inactiveForeground;
-                titleBar.ButtonBackgroundColor = Color.FromArgb(0, 0, 0, 0);
+                titleBar.ButtonBackgroundColor = Colors.Transparent;
                 titleBar.ButtonForegroundColor = foreground;
                 titleBar.ButtonHoverBackgroundColor = hoverBackground;
                 titleBar.ButtonHoverForegroundColor = foreground;
                 titleBar.ButtonPressedBackgroundColor = pressedBackground;
                 titleBar.ButtonPressedForegroundColor = foreground;
-                titleBar.ButtonInactiveBackgroundColor = Color.FromArgb(0, 0, 0, 0);
+                titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
                 titleBar.ButtonInactiveForegroundColor = inactiveForeground;
             }
             else
             {
-                var background = Color.FromArgb(255, 243, 243, 243);
+                var background = Color.FromArgb(255, 255, 255, 255);
                 var foreground = Colors.Black;
                 var inactiveForeground = Color.FromArgb(255, 120, 120, 120);
                 var hoverBackground = Color.FromArgb(255, 230, 230, 230);
@@ -323,15 +372,26 @@ namespace App1
                 titleBar.ForegroundColor = foreground;
                 titleBar.InactiveBackgroundColor = background;
                 titleBar.InactiveForegroundColor = inactiveForeground;
-                titleBar.ButtonBackgroundColor = Color.FromArgb(0, 0, 0, 0);
+                titleBar.ButtonBackgroundColor = Colors.Transparent;
                 titleBar.ButtonForegroundColor = foreground;
                 titleBar.ButtonHoverBackgroundColor = hoverBackground;
                 titleBar.ButtonHoverForegroundColor = foreground;
                 titleBar.ButtonPressedBackgroundColor = pressedBackground;
                 titleBar.ButtonPressedForegroundColor = foreground;
-                titleBar.ButtonInactiveBackgroundColor = Color.FromArgb(0, 0, 0, 0);
+                titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
                 titleBar.ButtonInactiveForegroundColor = inactiveForeground;
             }
+        }
+
+        private void ApplyImmersiveDarkMode(bool useDarkMode)
+        {
+            EnsureHwnd();
+            if (_hwnd == IntPtr.Zero)
+                return;
+
+            int value = useDarkMode ? 1 : 0;
+            _ = DwmSetWindowAttribute(_hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref value, sizeof(int));
+            _ = DwmSetWindowAttribute(_hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, ref value, sizeof(int));
         }
 
         private bool IsDarkTheme()
@@ -340,8 +400,14 @@ namespace App1
             {
                 ElementTheme.Dark => true,
                 ElementTheme.Light => false,
-                _ => Application.Current?.RequestedTheme == ApplicationTheme.Dark
+                _ => IsSystemDarkTheme()
             };
+        }
+
+        private static bool IsSystemDarkTheme()
+        {
+            var background = new UISettings().GetColorValue(UIColorType.Background);
+            return background.R < 128;
         }
 
         private void SyncAutoStartSetting()
@@ -461,6 +527,88 @@ namespace App1
             }
         }
 
+        private void OnSystemDisplayStateChanged()
+        {
+            DispatcherQueue.TryEnqueue(RequestGammaReapply);
+        }
+
+        private void GammaWatchdogTimer_Tick(object? sender, object e)
+        {
+            EnsureGammaApplied();
+        }
+
+        private void RequestGammaReapply()
+        {
+            if (_isExiting || !_gammaInitialized || _gammaPreviewActive)
+                return;
+
+            ApplyCurrentGamma(forceReapply: true);
+            ScheduleDelayedGammaReapplies();
+        }
+
+        private void EnsureGammaApplied()
+        {
+            if (_isExiting || !_gammaInitialized || _gammaPreviewActive)
+                return;
+
+            if (!TryGetExpectedGammaSettings(out var expected))
+                return;
+
+            if (GammaController.IsLikelyApplied(expected))
+                return;
+
+            _gammaTransition.ForceApply(expected);
+        }
+
+        private bool TryGetExpectedGammaSettings(out GammaSettings settings)
+        {
+            settings = GammaSettings.Off;
+
+            if (!_settings.IsFilterEnabled || !_patterns.Any())
+                return false;
+
+            var currentPattern = ScheduleHelper.ResolveActivePattern(_patterns, DateTime.Now);
+            if (currentPattern == null)
+                return false;
+
+            settings = GammaSettings.FromPattern(currentPattern);
+            return true;
+        }
+
+        private void ScheduleDelayedGammaReapplies()
+        {
+            _gammaReapplyCts?.Cancel();
+            _gammaReapplyCts?.Dispose();
+            _gammaReapplyCts = new CancellationTokenSource();
+            var token = _gammaReapplyCts.Token;
+
+            Task.Run(async () =>
+            {
+                foreach (int delayMs in new[] { 800, 2000, 5000 })
+                {
+                    try
+                    {
+                        await Task.Delay(delayMs, token).ConfigureAwait(false);
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        break;
+                    }
+
+                    if (token.IsCancellationRequested || _isExiting)
+                        break;
+
+                    DispatcherQueue.TryEnqueue(() =>
+                    {
+                        if (_isExiting || !_gammaInitialized || _gammaPreviewActive)
+                            return;
+
+                        ApplyCurrentGamma(forceReapply: true);
+                    });
+                }
+            }, token);
+        }
+
         private void ExitApplication()
         {
             _isExiting = true;
@@ -468,9 +616,15 @@ namespace App1
             _interactiveShowListenerCts?.Cancel();
             _interactiveShowListenerCts?.Dispose();
             _interactiveShowListenerCts = null;
+            _gammaReapplyCts?.Cancel();
+            _gammaReapplyCts?.Dispose();
+            _gammaReapplyCts = null;
 
             _timer.Stop();
+            _gammaWatchdogTimer.Stop();
             _gammaTransition.Stop();
+            _systemEventWindow?.Dispose();
+            _systemEventWindow = null;
             _trayMessageWindow?.Dispose();
             _trayMessageWindow = null;
             GammaController.ResetGamma();
@@ -539,14 +693,14 @@ namespace App1
             _timer.Start();
         }
 
-        private void ApplyCurrentGamma()
+        private void ApplyCurrentGamma(bool forceReapply = false)
         {
             if (_gammaPreviewActive)
                 return;
 
             if (!_settings.IsFilterEnabled)
             {
-                _gammaTransition.AnimateTo(GammaSettings.Off);
+                ApplyGamma(GammaSettings.Off, forceReapply);
                 _appState.UpdateRuntimeStatus(
                     Strings.Get("Status_FilterDisabled"),
                     Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational,
@@ -557,7 +711,7 @@ namespace App1
 
             if (!_patterns.Any())
             {
-                _gammaTransition.AnimateTo(GammaSettings.Off);
+                ApplyGamma(GammaSettings.Off, forceReapply);
                 _appState.UpdateRuntimeStatus(
                     Strings.Get("Status_NoSchedule"),
                     Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational,
@@ -569,12 +723,12 @@ namespace App1
             var currentPattern = ScheduleHelper.ResolveActivePattern(_patterns, DateTime.Now);
             if (currentPattern == null)
             {
-                _gammaTransition.AnimateTo(GammaSettings.Off);
+                ApplyGamma(GammaSettings.Off, forceReapply);
                 return;
             }
 
             var settings = GammaSettings.FromPattern(currentPattern);
-            _gammaTransition.AnimateTo(settings);
+            ApplyGamma(settings, forceReapply);
             _appState.UpdateRuntimeStatus(
                 Strings.Format(
                     "Status_Applied",
@@ -585,6 +739,17 @@ namespace App1
                 settings,
                 currentPattern);
         }
+
+        private void ApplyGamma(GammaSettings settings, bool forceReapply)
+        {
+            if (forceReapply)
+                _gammaTransition.ForceApply(settings);
+            else
+                _gammaTransition.AnimateTo(settings);
+        }
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
