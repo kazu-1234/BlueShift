@@ -9,13 +9,15 @@
     <views:PageScrollHost>
         <Grid x:Name="ContentArea">
             <StackPanel Style="{StaticResource PageBaseStackPanelStyle}">
-                <TextBlock x:Uid="Settings_SectionAppearance" Style="{StaticResource SettingsSectionHeaderStyle}" />
+                <TextBlock x:Uid="Page_Settings" Style="{StaticResource PageTitleTextStyle}" />
+
+                <TextBlock x:Uid="Settings_SectionAppearance" Style="{StaticResource SettingsSectionHeaderFirstStyle}" />
 
                 <controls:SettingsCard>
                     <controls:SettingsCard.Header>
                         <StackPanel Spacing="4" MinWidth="0">
-                            <TextBlock x:Uid="Settings_Theme" FontWeight="SemiBold" />
-                            <TextBlock x:Uid="Settings_ThemeDesc" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                            <TextBlock x:Uid="Settings_Theme" Style="{StaticResource CardHeaderTextStyle}" />
+                            <TextBlock x:Uid="Settings_ThemeDesc" Style="{StaticResource CardDescriptionTextStyle}" />
                         </StackPanel>
                     </controls:SettingsCard.Header>
                     <ComboBox x:Name="ThemeComboBox"
@@ -28,8 +30,8 @@
                 <controls:SettingsCard>
                     <controls:SettingsCard.Header>
                         <StackPanel Spacing="4" MinWidth="0">
-                            <TextBlock x:Uid="Settings_AutoStart" FontWeight="SemiBold" />
-                            <TextBlock x:Uid="Settings_AutoStartDesc" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                            <TextBlock x:Uid="Settings_AutoStart" Style="{StaticResource CardHeaderTextStyle}" />
+                            <TextBlock x:Uid="Settings_AutoStartDesc" Style="{StaticResource CardDescriptionTextStyle}" />
                         </StackPanel>
                     </controls:SettingsCard.Header>
                     <ToggleSwitch x:Name="AutoStartToggle" Toggled="AutoStartToggle_Toggled" />
@@ -76,25 +78,17 @@
                     </controls:SettingsCard.Description>
                 </controls:SettingsCard>
 
-                <TextBlock x:Uid="Settings_SectionUpdate" Style="{StaticResource SettingsSectionHeaderStyle}" />
-
                 <controls:SettingsCard>
                     <controls:SettingsCard.Header>
-                        <StackPanel Spacing="4" MinWidth="0">
-                            <TextBlock x:Name="VersionText" FontWeight="SemiBold" />
-                            <TextBlock x:Uid="Settings_UpdateDesc" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                        <StackPanel Spacing="4" MinWidth="0" Orientation="Horizontal">
+                            <CheckBox x:Name="HideTrayIconCheckBox"
+                                      x:Uid="Settings_HideTrayIcon"
+                                      VerticalAlignment="Center"
+                                      Checked="HideTrayIconCheckBox_Changed"
+                                      Unchecked="HideTrayIconCheckBox_Changed" />
                         </StackPanel>
                     </controls:SettingsCard.Header>
-                    <Button x:Name="CheckUpdateButton"
-                            x:Uid="Settings_CheckUpdate"
-                            Click="CheckUpdateButton_Click" />
                 </controls:SettingsCard>
-
-                <InfoBar x:Name="UpdateInfoBar"
-                         IsOpen="False"
-                         IsClosable="True"
-                         Severity="Informational"
-                         HorizontalAlignment="Stretch" />
             </StackPanel>
         </Grid>
     </views:PageScrollHost>

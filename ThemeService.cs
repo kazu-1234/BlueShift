@@ -27,13 +27,14 @@ namespace App1
         {
             _themeRoot = themeRoot;
             EnsureSystemThemeWatcher();
-            ApplyToRoot();
+            // 初回は通知しない（起動直後の二重描画を防ぐ）
+            ApplyToRoot(notify: false);
         }
 
         public static void SetPreference(AppThemePreference preference)
         {
             _currentPreference = preference;
-            ApplyToRoot();
+            ApplyToRoot(notify: true);
         }
 
         public static bool IsDarkTheme(FrameworkElement themeRoot)
@@ -46,7 +47,7 @@ namespace App1
             };
         }
 
-        private static void ApplyToRoot()
+        private static void ApplyToRoot(bool notify)
         {
             if (_themeRoot == null)
                 return;
@@ -58,7 +59,8 @@ namespace App1
                 _ => ElementTheme.Default
             };
 
-            ThemeChanged?.Invoke(null, EventArgs.Empty);
+            if (notify)
+                ThemeChanged?.Invoke(null, EventArgs.Empty);
         }
 
         private static void EnsureSystemThemeWatcher()

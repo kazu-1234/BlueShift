@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 
 namespace App1
@@ -113,11 +114,23 @@ namespace App1
 
     private static IntPtr LoadAppIcon()
     {
+      string iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "BlueShift.ico");
+      if (File.Exists(iconPath))
+      {
+        IntPtr fromFile = LoadImage(IntPtr.Zero, iconPath, ImageIcon, 0, 0, LrLoadFromFile | LrDefaultSize);
+        if (fromFile != IntPtr.Zero)
+          return fromFile;
+      }
+
       string exePath = Process.GetCurrentProcess().MainModule?.FileName ?? string.Empty;
       ushort index = 0;
       IntPtr icon = ExtractAssociatedIcon(IntPtr.Zero, exePath, ref index);
       return icon != IntPtr.Zero ? icon : IntPtr.Zero;
     }
+
+    private const uint ImageIcon = 1;
+    private const uint LrLoadFromFile = 0x00000010;
+    private const uint LrDefaultSize = 0x00000040;
 
     public void Dispose()
     {
@@ -154,6 +167,9 @@ namespace App1
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr ExtractAssociatedIcon(IntPtr hInst, string pszIconPath, ref ushort piIconIndex);
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern IntPtr LoadImage(IntPtr hInst, string name, uint type, int cx, int cy, uint fuLoad);
 
     [DllImport("user32.dll")]
     private static extern IntPtr CreatePopupMenu();

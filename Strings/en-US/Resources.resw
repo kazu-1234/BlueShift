@@ -67,6 +67,18 @@
   <data name="Nav_Info.Content" xml:space="preserve">
     <value>Info</value>
   </data>
+  <data name="Nav_Settings.Content" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Page_Time.Text" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="Page_Info.Text" xml:space="preserve">
+    <value>Info</value>
+  </data>
+  <data name="Page_Settings.Text" xml:space="preserve">
+    <value>Settings</value>
+  </data>
   <data name="Toggle_On" xml:space="preserve">
     <value>On</value>
   </data>
@@ -163,17 +175,17 @@
   <data name="Settings_AutostartPath_Label.Text" xml:space="preserve">
     <value>Registered command</value>
   </data>
-  <data name="Settings_SectionUpdate.Text" xml:space="preserve">
+  <data name="Settings_HideTrayIcon.Content" xml:space="preserve">
+    <value>Hide tray icon</value>
+  </data>
+  <data name="Info_SectionUpdate.Text" xml:space="preserve">
     <value>Updates</value>
   </data>
-  <data name="Settings_UpdateDesc.Text" xml:space="preserve">
+  <data name="Info_UpdateDesc.Text" xml:space="preserve">
     <value>Check for the latest version from GitHub Releases</value>
   </data>
-  <data name="Settings_CheckUpdate.Content" xml:space="preserve">
+  <data name="Info_CheckUpdate.Content" xml:space="preserve">
     <value>Check for updates</value>
-  </data>
-  <data name="Info_AppName.Text" xml:space="preserve">
-    <value>BlueShift</value>
   </data>
   <data name="Info_SectionStatus.Text" xml:space="preserve">
     <value>Current status</value>
@@ -193,14 +205,14 @@
   <data name="Info_NextTransition.Text" xml:space="preserve">
     <value>Next transition</value>
   </data>
-  <data name="Info_SectionAbout.Text" xml:space="preserve">
-    <value>About</value>
+  <data name="Info_SectionDisclaimer.Text" xml:space="preserve">
+    <value>Disclaimer</value>
   </data>
   <data name="Info_Description.Text" xml:space="preserve">
-    <value>Reduces blue light on your screen by time of day to ease eye strain. Keeps running in the system tray after you close the window.</value>
+    <value>Reduces blue light on your screen by time of day to ease eye strain. Continues running in the background after you close the window.</value>
   </data>
   <data name="Info_Disclaimer.Text" xml:space="preserve">
-    <value>The developer is not liable for any damages arising from the use of this software. Use at your own risk.</value>
+    <value>This software is provided as is. The developer is not liable for any damages arising from its use, including but not limited to data loss, device failure, business interruption, or lost profits, including effects from display or color-temperature changes. Use entirely at your own risk. See the license shown at installation and the MIT License for details.</value>
   </data>
   <data name="Status_Enabled" xml:space="preserve">
     <value>Enabled</value>

@@ -67,6 +67,18 @@
   <data name="Nav_Info.Content" xml:space="preserve">
     <value>情報</value>
   </data>
+  <data name="Nav_Settings.Content" xml:space="preserve">
+    <value>設定</value>
+  </data>
+  <data name="Page_Time.Text" xml:space="preserve">
+    <value>時間</value>
+  </data>
+  <data name="Page_Info.Text" xml:space="preserve">
+    <value>情報</value>
+  </data>
+  <data name="Page_Settings.Text" xml:space="preserve">
+    <value>設定</value>
+  </data>
   <data name="Toggle_On" xml:space="preserve">
     <value>オン</value>
   </data>
@@ -163,17 +175,17 @@
   <data name="Settings_AutostartPath_Label.Text" xml:space="preserve">
     <value>登録コマンド</value>
   </data>
-  <data name="Settings_SectionUpdate.Text" xml:space="preserve">
+  <data name="Settings_HideTrayIcon.Content" xml:space="preserve">
+    <value>トレイアイコンの非表示</value>
+  </data>
+  <data name="Info_SectionUpdate.Text" xml:space="preserve">
     <value>アップデート</value>
   </data>
-  <data name="Settings_UpdateDesc.Text" xml:space="preserve">
+  <data name="Info_UpdateDesc.Text" xml:space="preserve">
     <value>GitHub リリースから最新版を確認します</value>
   </data>
-  <data name="Settings_CheckUpdate.Content" xml:space="preserve">
+  <data name="Info_CheckUpdate.Content" xml:space="preserve">
     <value>更新を確認</value>
-  </data>
-  <data name="Info_AppName.Text" xml:space="preserve">
-    <value>BlueShift</value>
   </data>
   <data name="Info_SectionStatus.Text" xml:space="preserve">
     <value>現在の状態</value>
@@ -193,14 +205,14 @@
   <data name="Info_NextTransition.Text" xml:space="preserve">
     <value>次の切り替え</value>
   </data>
-  <data name="Info_SectionAbout.Text" xml:space="preserve">
-    <value>アプリについて</value>
+  <data name="Info_SectionDisclaimer.Text" xml:space="preserve">
+    <value>免責事項</value>
   </data>
   <data name="Info_Description.Text" xml:space="preserve">
-    <value>時間帯ごとに画面のブルーライトを抑え、目の負担を軽減します。ウィンドウを閉じてもタスクトレイでバックグラウンド動作を続けます。</value>
+    <value>時間帯ごとに画面のブルーライトを抑え、目の負担を軽減します。ウィンドウを閉じてもバックグラウンド動作を続けます。</value>
   </data>
   <data name="Info_Disclaimer.Text" xml:space="preserve">
-    <value>本ソフトウェアの使用により生じたいかなる損害についても、開発者は一切の責任を負いません。自己責任でご使用ください。</value>
+    <value>本ソフトウェアは現状有姿で提供されます。画面表示・色温度の変更を含む機能の利用により生じたいかなる損害（データの損失、機器の故障、業務の中断、逸失利益などを含みますがこれらに限りません）についても、開発者は一切の責任を負いません。本ソフトウェアの使用はすべて自己責任で行ってください。詳細はインストール時に表示される使用許諾および MIT License を参照してください。</value>
   </data>
   <data name="Status_Enabled" xml:space="preserve">
     <value>有効</value>

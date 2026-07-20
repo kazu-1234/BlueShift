@@ -1,4 +1,4 @@
-// v1.0.34
+// v1.0.47
 
 using Microsoft.UI.Xaml;
 using System;
@@ -8,12 +8,17 @@ namespace App1
 {
     public partial class App : Application
     {
-        private Window? m_window;
-        private static bool _gammaResetRegistered;
+        private AppRuntime? _runtime;
+
+        internal static AppRuntime Runtime =>
+            (Current as App)?._runtime
+            ?? throw new InvalidOperationException("App runtime is not initialized.");
 
         public App()
         {
             InitializeComponent();
+            // × で MainWindow を破棄してもトレイ常駐を続ける（明示 Exit まで終了しない）
+            DispatcherShutdownMode = DispatcherShutdownMode.OnExplicitShutdown;
             UnhandledException += App_UnhandledException;
         }
 
@@ -54,18 +59,10 @@ namespace App1
                 return;
             }
 
-            ThemeService.Initialize(settings.ThemePreference);
-            RegisterGammaResetOnExit();
-
             try
             {
-                m_window = new MainWindow(
-                    launchInBackground,
-                    requestInteractiveShow,
-                    SingleInstanceManager.InteractiveShowEvent);
-
-                // WinUI の初期化には Activate が必要。バックグラウンド起動は直後に非表示へ。
-                m_window.Activate();
+                _runtime = new AppRuntime(this);
+                _runtime.Start(launchInBackground, requestInteractiveShow);
             }
             catch (Exception ex)
             {
@@ -83,17 +80,6 @@ namespace App1
             }
 
             return false;
-        }
-
-        private static void RegisterGammaResetOnExit()
-        {
-            if (_gammaResetRegistered)
-                return;
-
-            _gammaResetRegistered = true;
-
-            AppDomain.CurrentDomain.ProcessExit += (_, _) => GammaController.ResetGamma();
-            AppDomain.CurrentDomain.UnhandledException += (_, _) => GammaController.ResetGamma();
         }
     }
 }

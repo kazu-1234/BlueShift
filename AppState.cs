@@ -19,6 +19,7 @@ namespace App1
         public Action? RefreshGamma { get; set; }
         public Action<GammaSettings>? PreviewGamma { get; set; }
         public Action? RescheduleTimer { get; set; }
+        public Action? ApplyTrayIconVisibility { get; set; }
 
         private string _statusMessage = string.Empty;
         private InfoBarSeverity _statusSeverity = InfoBarSeverity.Informational;

@@ -2,8 +2,6 @@ using App1;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
-using System;
-using Windows.System;
 
 namespace App1.Views
 {
@@ -39,7 +37,7 @@ namespace App1.Views
             };
 
             AutoStartToggle.IsOn = _state.Settings.AutoStart;
-            VersionText.Text = Strings.Format("Version_Format", UpdateChecker.CurrentVersion);
+            HideTrayIconCheckBox.IsChecked = _state.Settings.HideTrayIcon;
             UpdateAutoStartDetails();
             _isInitializing = false;
         }
@@ -82,6 +80,20 @@ namespace App1.Views
             UpdateAutoStartDetails();
         }
 
+        private void HideTrayIconCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializing || _state == null)
+                return;
+
+            bool hide = HideTrayIconCheckBox.IsChecked == true;
+            if (hide == _state.Settings.HideTrayIcon)
+                return;
+
+            _state.Settings.HideTrayIcon = hide;
+            _state.Settings.Save();
+            _state.ApplyTrayIconVisibility?.Invoke();
+        }
+
         private void UpdateAutoStartDetails()
         {
             if (_state == null)
@@ -100,42 +112,6 @@ namespace App1.Views
             AutostartPathText.Text = string.IsNullOrWhiteSpace(command)
                 ? Strings.Get("NotAvailable")
                 : command.Replace("\"", string.Empty);
-        }
-
-        private async void CheckUpdateButton_Click(object sender, RoutedEventArgs e)
-        {
-            CheckUpdateButton.IsEnabled = false;
-            UpdateInfoBar.IsOpen = false;
-
-            var result = await UpdateChecker.CheckForUpdateAsync();
-
-            UpdateInfoBar.Message = result.Message;
-            UpdateInfoBar.Severity = result.Status switch
-            {
-                UpdateCheckStatus.UpdateAvailable => InfoBarSeverity.Warning,
-                UpdateCheckStatus.UpToDate => InfoBarSeverity.Success,
-                UpdateCheckStatus.NotConfigured => InfoBarSeverity.Informational,
-                _ => InfoBarSeverity.Error
-            };
-            UpdateInfoBar.IsOpen = true;
-
-            if (result.Status == UpdateCheckStatus.UpdateAvailable
-                && !string.IsNullOrWhiteSpace(result.ReleasePageUrl))
-            {
-                var dialog = new ContentDialog
-                {
-                    Title = Strings.Get("Update_DialogTitle"),
-                    Content = Strings.Format("Update_DialogContent", result.Message),
-                    PrimaryButtonText = Strings.Get("Update_DialogOpen"),
-                    CloseButtonText = Strings.Get("Update_DialogClose"),
-                    XamlRoot = Content.XamlRoot
-                };
-
-                if (await dialog.ShowAsync() == ContentDialogResult.Primary)
-                    await Launcher.LaunchUriAsync(new Uri(result.ReleasePageUrl));
-            }
-
-            CheckUpdateButton.IsEnabled = true;
         }
     }
 }
