@@ -187,6 +187,9 @@
   <data name="Info_CheckUpdate.Content" xml:space="preserve">
     <value>更新を確認</value>
   </data>
+  <data name="Info_InstallUpdate.Content" xml:space="preserve">
+    <value>インストーラーをダウンロードして実行</value>
+  </data>
   <data name="Info_SectionStatus.Text" xml:space="preserve">
     <value>現在の状態</value>
   </data>
@@ -245,36 +248,52 @@
     <value>{0} 〜</value>
   </data>
   <data name="Version_Format" xml:space="preserve">
-    <value>バージョン {0}</value>
+    <value>現在のバージョン: v{0}</value>
   </data>
   <data name="Update_NotConfigured" xml:space="preserve">
-    <value>アップデート確認 URL が未設定です。後日 GitHub リリース URL を設定してください。</value>
+    <value>更新確認 URL が設定されていません</value>
   </data>
   <data name="Update_FetchFailed" xml:space="preserve">
-    <value>リリース情報の取得に失敗しました。</value>
+    <value>リリース情報の取得に失敗しました</value>
   </data>
   <data name="Update_Available" xml:space="preserve">
-    <value>新しいバージョン {0} が利用可能です。（現在: {1}）</value>
+    <value>新しいバージョン v{0} が利用可能です（現在: v{1}）</value>
   </data>
   <data name="Update_UpToDate" xml:space="preserve">
-    <value>最新バージョンです。（{0}）</value>
+    <value>v{0} は最新です</value>
   </data>
   <data name="Update_Error" xml:space="preserve">
-    <value>アップデート確認中にエラーが発生しました: {0}</value>
+    <value>更新確認エラー: {0}</value>
   </data>
-  <data name="Update_DialogTitle" xml:space="preserve">
-    <value>アップデートがあります</value>
+  <data name="Update_AvailableTitle" xml:space="preserve">
+    <value>更新あり</value>
   </data>
-  <data name="Update_DialogContent" xml:space="preserve">
-    <value>{0}
-
-リリースページを開きますか？</value>
+  <data name="Update_OpenRelease" xml:space="preserve">
+    <value>リリースページを開く</value>
   </data>
-  <data name="Update_DialogOpen" xml:space="preserve">
-    <value>開く</value>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>キャンセル</value>
   </data>
-  <data name="Update_DialogClose" xml:space="preserve">
-    <value>閉じる</value>
+  <data name="Update_DownloadReady" xml:space="preserve">
+    <value>バージョン {0} のインストーラーをダウンロードできます</value>
+  </data>
+  <data name="Update_Preparing" xml:space="preserve">
+    <value>準備中...</value>
+  </data>
+  <data name="Update_Downloading" xml:space="preserve">
+    <value>ダウンロード中...</value>
+  </data>
+  <data name="Update_LaunchingSetup" xml:space="preserve">
+    <value>インストーラーを起動しています...</value>
+  </data>
+  <data name="Update_SetupStarted" xml:space="preserve">
+    <value>インストーラーを起動しました。画面の指示に従って更新してください。</value>
+  </data>
+  <data name="Update_SetupRequired" xml:space="preserve">
+    <value>Inno Setup の setup.exe が見つかりません。Release ページから手動で更新してください。</value>
+  </data>
+  <data name="Update_Failed" xml:space="preserve">
+    <value>更新失敗: {0}</value>
   </data>
   <data name="Tray_OpenSettings" xml:space="preserve">
     <value>設定を開く</value>
