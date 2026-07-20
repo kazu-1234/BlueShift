@@ -26,12 +26,42 @@ namespace App1.Views
             if (_state == null) return;
 
             _isInitializing = true;
+
+            ThemeComboBox.Items.Clear();
+            ThemeComboBox.Items.Add(Strings.Get("Settings_Theme_System"));
+            ThemeComboBox.Items.Add(Strings.Get("Settings_Theme_Light"));
+            ThemeComboBox.Items.Add(Strings.Get("Settings_Theme_Dark"));
+            ThemeComboBox.SelectedIndex = _state.Settings.ThemePreference switch
+            {
+                AppThemePreference.Light => 1,
+                AppThemePreference.Dark => 2,
+                _ => 0
+            };
+
             AutoStartToggle.IsOn = _state.Settings.AutoStart;
-            UseLogonTaskCheckBox.IsChecked = _state.Settings.UseLogonTask;
             VersionText.Text = Strings.Format("Version_Format", UpdateChecker.CurrentVersion);
             UpdateAutoStartDetails();
-            UpdateLogonTaskCheckBoxEnabled();
             _isInitializing = false;
+        }
+
+        private void ThemeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isInitializing || _state == null || ThemeComboBox.SelectedIndex < 0)
+                return;
+
+            var preference = ThemeComboBox.SelectedIndex switch
+            {
+                1 => AppThemePreference.Light,
+                2 => AppThemePreference.Dark,
+                _ => AppThemePreference.System
+            };
+
+            if (preference == _state.Settings.ThemePreference)
+                return;
+
+            ThemeService.SetPreference(preference);
+            _state.Settings.ThemePreference = preference;
+            _state.Settings.Save();
         }
 
         private void AutoStartToggle_Toggled(object sender, RoutedEventArgs e)
@@ -39,10 +69,10 @@ namespace App1.Views
             if (_isInitializing || _state == null) return;
 
             bool requested = AutoStartToggle.IsOn;
-            if (!StartupManager.ApplyAutoStart(requested, _state.Settings.UseLogonTask))
+            if (!StartupManager.SyncAutostartWithSettings(requested) && requested)
             {
                 _isInitializing = true;
-                AutoStartToggle.IsOn = !requested;
+                AutoStartToggle.IsOn = false;
                 _isInitializing = false;
                 return;
             }
@@ -50,36 +80,6 @@ namespace App1.Views
             _state.Settings.AutoStart = requested;
             _state.Settings.Save();
             UpdateAutoStartDetails();
-            UpdateLogonTaskCheckBoxEnabled();
-        }
-
-        private void UseLogonTaskCheckBox_Click(object sender, RoutedEventArgs e)
-        {
-            if (_isInitializing || _state == null) return;
-
-            bool useLogonTask = UseLogonTaskCheckBox.IsChecked == true;
-            _state.Settings.UseLogonTask = useLogonTask;
-            _state.Settings.Save();
-
-            if (!_state.Settings.AutoStart)
-                return;
-
-            if (!StartupManager.ApplyAutoStart(true, useLogonTask))
-            {
-                _isInitializing = true;
-                UseLogonTaskCheckBox.IsChecked = !useLogonTask;
-                _state.Settings.UseLogonTask = UseLogonTaskCheckBox.IsChecked == true;
-                _state.Settings.Save();
-                _isInitializing = false;
-                return;
-            }
-
-            UpdateAutoStartDetails();
-        }
-
-        private void UpdateLogonTaskCheckBoxEnabled()
-        {
-            UseLogonTaskCheckBox.IsEnabled = AutoStartToggle.IsOn;
         }
 
         private void UpdateAutoStartDetails()
@@ -94,12 +94,9 @@ namespace App1.Views
                 return;
             }
 
-            bool useLogonTask = _state.Settings.UseLogonTask;
-            AutostartModeText.Text = useLogonTask
-                ? Strings.Get("Settings_AutostartMode_Task")
-                : Strings.Get("Settings_AutostartMode_Registry");
+            AutostartModeText.Text = Strings.Get("Settings_AutostartMode_Task");
 
-            string? command = StartupManager.GetRegisteredCommand(useLogonTask);
+            string? command = StartupManager.GetRegisteredCommand();
             AutostartPathText.Text = string.IsNullOrWhiteSpace(command)
                 ? Strings.Get("NotAvailable")
                 : command.Replace("\"", string.Empty);

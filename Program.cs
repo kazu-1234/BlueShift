@@ -17,6 +17,13 @@ namespace App1
                 return;
             }
 
+            // 自動起動登録だけ削除して終了（アプリ削除時の掃除用）。
+            if (HasArg(args, "--cleanup-autostart"))
+            {
+                StartupManager.CleanupAutostartOnly();
+                return;
+            }
+
             WinRT.ComWrappersSupport.InitializeComWrappers();
             Application.Start(_ =>
             {

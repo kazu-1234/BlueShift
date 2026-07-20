@@ -124,6 +124,24 @@
   <data name="Time_Delete.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Delete</value>
   </data>
+  <data name="Settings_SectionAppearance.Text" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="Settings_Theme.Text" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="Settings_ThemeDesc.Text" xml:space="preserve">
+    <value>Choose the app display theme (default: follow system)</value>
+  </data>
+  <data name="Settings_Theme_System" xml:space="preserve">
+    <value>Match system</value>
+  </data>
+  <data name="Settings_Theme_Light" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="Settings_Theme_Dark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
   <data name="Settings_SectionStartup.Text" xml:space="preserve">
     <value>Startup</value>
   </data>
@@ -131,16 +149,10 @@
     <value>Start automatically at logon</value>
   </data>
   <data name="Settings_AutoStartDesc.Text" xml:space="preserve">
-    <value>Starts BlueShift in the background when you sign in to Windows</value>
-  </data>
-  <data name="Settings_UseLogonTask.Content" xml:space="preserve">
-    <value>Run as logon task instead of startup registry entry</value>
+    <value>Starts BlueShift in the tray when you sign in (Task Scheduler logon task)</value>
   </data>
   <data name="Settings_AutostartMode_Label.Text" xml:space="preserve">
     <value>Registration method</value>
-  </data>
-  <data name="Settings_AutostartMode_Registry" xml:space="preserve">
-    <value>Startup (registry)</value>
   </data>
   <data name="Settings_AutostartMode_Task" xml:space="preserve">
     <value>Logon task</value>
@@ -149,7 +161,7 @@
     <value>Disabled</value>
   </data>
   <data name="Settings_AutostartPath_Label.Text" xml:space="preserve">
-    <value>Registered path</value>
+    <value>Registered command</value>
   </data>
   <data name="Settings_SectionUpdate.Text" xml:space="preserve">
     <value>Updates</value>

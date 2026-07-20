@@ -1,5 +1,4 @@
 ﻿using App1.Views;
-using Microsoft.UI;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -13,9 +12,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Windows.UI;
 using Windows.Graphics;
-using Windows.UI.ViewManagement;
 using WinRT.Interop;
 
 namespace App1
@@ -26,9 +23,6 @@ namespace App1
         private const int DefaultClientHeight = 680;
         private const double MinimumWindowWidth = 870;
         private const double MinimumWindowHeight = 600;
-
-        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
-        private const int DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19;
 
         private readonly Settings _settings;
         private readonly ObservableCollection<Pattern> _patterns;
@@ -56,7 +50,7 @@ namespace App1
         private string _currentPageTag = "Time";
         private CancellationTokenSource? _interactiveShowListenerCts;
         private CancellationTokenSource? _gammaReapplyCts;
-        private UISettings? _uiSettings;
+        private TitleBarThemeHelper? _titleBarThemeHelper;
 
         public MainWindow(
             bool launchInBackground = false,
@@ -69,9 +63,11 @@ namespace App1
             InitializeComponent();
             Title = Strings.Get("AppName");
             ApplyWindowIcon();
-            ConfigureTitleBar();
 
             _settings = Settings.Load();
+            ThemeService.AttachRoot(RootGrid);
+            _titleBarThemeHelper = new TitleBarThemeHelper(this, RootGrid);
+
             _patterns = new ObservableCollection<Pattern>(_settings.Patterns.OrderBy(p => p.Time));
             _appState = new AppState(_settings, _patterns);
             _appState.SavePatterns = () => { };
@@ -88,9 +84,6 @@ namespace App1
             };
             _appState.RescheduleTimer = ScheduleNextGammaCheck;
 
-            StartupManager.MigrateFromLegacyIfNeeded();
-            SyncAutoStartSetting();
-
             _timer = new DispatcherTimer();
             _timer.Tick += Timer_Tick;
 
@@ -101,6 +94,7 @@ namespace App1
             _gammaWatchdogTimer.Tick += GammaWatchdogTimer_Tick;
 
             AppWindow.Closing += AppWindow_Closing;
+            AppWindow.Changed += AppWindow_Changed;
             RootGrid.Loaded += RootGrid_Loaded;
             ContentFrame.NavigationFailed += ContentFrame_NavigationFailed;
             Activated += MainWindow_Activated;
@@ -113,7 +107,7 @@ namespace App1
         {
             if (args.WindowActivationState != WindowActivationState.Deactivated)
             {
-                UpdateTitleBarColors();
+                _titleBarThemeHelper?.ScheduleUpdate();
                 EnsureGammaApplied();
             }
 
@@ -135,7 +129,7 @@ namespace App1
             _uiInitialized = true;
             RootGrid.Loaded -= RootGrid_Loaded;
 
-            AppWindow.ResizeClient(new SizeInt32(DefaultClientWidth, DefaultClientHeight));
+            RestoreWindowBounds();
             ConfigureMinimumWindowSize();
 
             // Loaded 処理中の Navigate は MeasureOverride を壊すため低優先度で defer する。
@@ -312,127 +306,6 @@ namespace App1
                 AppWindow.SetIcon(iconPath);
         }
 
-        private void ConfigureTitleBar()
-        {
-            if (!AppWindowTitleBar.IsCustomizationSupported())
-                return;
-
-            AppWindow.TitleBar.ExtendsContentIntoTitleBar = false;
-            RootGrid.ActualThemeChanged += (_, _) => UpdateTitleBarColors();
-            NavView.ActualThemeChanged += (_, _) => UpdateTitleBarColors();
-
-            _uiSettings = new UISettings();
-            _uiSettings.ColorValuesChanged += (_, _) =>
-            {
-                DispatcherQueue.TryEnqueue(UpdateTitleBarColors);
-            };
-
-            UpdateTitleBarColors();
-        }
-
-        private void UpdateTitleBarColors()
-        {
-            if (!AppWindowTitleBar.IsCustomizationSupported())
-                return;
-
-            bool isDark = IsDarkTheme();
-            ApplyImmersiveDarkMode(isDark);
-
-            var titleBar = AppWindow.TitleBar;
-            if (isDark)
-            {
-                var background = Color.FromArgb(255, 32, 32, 32);
-                var foreground = Colors.White;
-                var inactiveForeground = Color.FromArgb(255, 150, 150, 150);
-                var hoverBackground = Color.FromArgb(255, 56, 56, 56);
-                var pressedBackground = Color.FromArgb(255, 72, 72, 72);
-
-                titleBar.BackgroundColor = background;
-                titleBar.ForegroundColor = foreground;
-                titleBar.InactiveBackgroundColor = background;
-                titleBar.InactiveForegroundColor = inactiveForeground;
-                titleBar.ButtonBackgroundColor = Colors.Transparent;
-                titleBar.ButtonForegroundColor = foreground;
-                titleBar.ButtonHoverBackgroundColor = hoverBackground;
-                titleBar.ButtonHoverForegroundColor = foreground;
-                titleBar.ButtonPressedBackgroundColor = pressedBackground;
-                titleBar.ButtonPressedForegroundColor = foreground;
-                titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-                titleBar.ButtonInactiveForegroundColor = inactiveForeground;
-            }
-            else
-            {
-                var background = Color.FromArgb(255, 255, 255, 255);
-                var foreground = Colors.Black;
-                var inactiveForeground = Color.FromArgb(255, 120, 120, 120);
-                var hoverBackground = Color.FromArgb(255, 230, 230, 230);
-                var pressedBackground = Color.FromArgb(255, 210, 210, 210);
-
-                titleBar.BackgroundColor = background;
-                titleBar.ForegroundColor = foreground;
-                titleBar.InactiveBackgroundColor = background;
-                titleBar.InactiveForegroundColor = inactiveForeground;
-                titleBar.ButtonBackgroundColor = Colors.Transparent;
-                titleBar.ButtonForegroundColor = foreground;
-                titleBar.ButtonHoverBackgroundColor = hoverBackground;
-                titleBar.ButtonHoverForegroundColor = foreground;
-                titleBar.ButtonPressedBackgroundColor = pressedBackground;
-                titleBar.ButtonPressedForegroundColor = foreground;
-                titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-                titleBar.ButtonInactiveForegroundColor = inactiveForeground;
-            }
-        }
-
-        private void ApplyImmersiveDarkMode(bool useDarkMode)
-        {
-            EnsureHwnd();
-            if (_hwnd == IntPtr.Zero)
-                return;
-
-            int value = useDarkMode ? 1 : 0;
-            _ = DwmSetWindowAttribute(_hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref value, sizeof(int));
-            _ = DwmSetWindowAttribute(_hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, ref value, sizeof(int));
-        }
-
-        private bool IsDarkTheme()
-        {
-            return RootGrid.ActualTheme switch
-            {
-                ElementTheme.Dark => true,
-                ElementTheme.Light => false,
-                _ => IsSystemDarkTheme()
-            };
-        }
-
-        private static bool IsSystemDarkTheme()
-        {
-            var background = new UISettings().GetColorValue(UIColorType.Background);
-            return background.R < 128;
-        }
-
-        private void SyncAutoStartSetting()
-        {
-            bool isAutoStart = StartupManager.IsAutoStartEnabled();
-            if (isAutoStart != _settings.AutoStart)
-            {
-                _settings.AutoStart = isAutoStart;
-                _settings.Save();
-            }
-
-            if (isAutoStart)
-            {
-                AutoStartMode activeMode = StartupManager.GetActiveMode(_settings.UseLogonTask);
-                bool useLogonTask = activeMode == AutoStartMode.LogonTask;
-                if (useLogonTask != _settings.UseLogonTask)
-                {
-                    _settings.UseLogonTask = useLogonTask;
-                    _settings.Save();
-                }
-            }
-
-            StartupManager.ValidateAutoStart(_settings.AutoStart, _settings.UseLogonTask);
-        }
-
         private void EnsureHwnd()
         {
             if (_hwnd == IntPtr.Zero)
@@ -476,9 +349,115 @@ namespace App1
             if (!_canHideToTray || !_uiRenderedOnce)
                 return;
 
+            SaveWindowBounds();
             AppWindow.IsShownInSwitchers = false;
             AppWindow.Hide();
             EnsureTrayIconVisible();
+        }
+
+        private void AppWindow_Changed(AppWindow sender, AppWindowChangedEventArgs args)
+        {
+            if (_isExiting)
+                return;
+
+            if (args.DidSizeChange || args.DidPositionChange)
+                SaveWindowBounds();
+        }
+
+        private void SaveWindowBounds()
+        {
+            if (AppWindow.Presenter is not OverlappedPresenter presenter)
+                return;
+
+            if (presenter.State == OverlappedPresenterState.Maximized)
+            {
+                // 最大化中は復元用の通常サイズ・位置を上書きしない
+                _settings.WindowMaximized = true;
+                _settings.Save();
+                return;
+            }
+
+            if (presenter.State != OverlappedPresenterState.Restored)
+                return;
+
+            var size = AppWindow.Size;
+            if (size.Width < 400 || size.Height < 300)
+                return;
+
+            // 最大化遷移中に「作業領域ほぼいっぱい」のサイズが来ても復元サイズを壊さない
+            var display = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Nearest);
+            if (display != null)
+            {
+                var work = display.WorkArea;
+                if (size.Width >= work.Width - 8 && size.Height >= work.Height - 8)
+                {
+                    _settings.WindowMaximized = true;
+                    _settings.Save();
+                    return;
+                }
+            }
+
+            var pos = AppWindow.Position;
+            _settings.WindowMaximized = false;
+            _settings.WindowWidth = size.Width;
+            _settings.WindowHeight = size.Height;
+            _settings.WindowX = pos.X;
+            _settings.WindowY = pos.Y;
+            _settings.Save();
+        }
+
+        private void RestoreWindowBounds()
+        {
+            int width = _settings.WindowWidth > 0 ? _settings.WindowWidth : DefaultClientWidth;
+            int height = _settings.WindowHeight > 0 ? _settings.WindowHeight : DefaultClientHeight;
+
+            DisplayArea? display = null;
+            if (_settings.WindowX >= 0 && _settings.WindowY >= 0)
+                display = DisplayArea.GetFromPoint(new PointInt32(_settings.WindowX, _settings.WindowY), DisplayAreaFallback.Nearest);
+            display ??= DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary);
+
+            if (display != null)
+            {
+                var work = display.WorkArea;
+
+                // 以前最大化サイズが保存されていた場合はデフォルトに戻す
+                if (width >= work.Width - 8 || height >= work.Height - 8)
+                {
+                    width = DefaultClientWidth;
+                    height = DefaultClientHeight;
+                }
+
+                width = Math.Clamp(width, 400, work.Width);
+                height = Math.Clamp(height, 300, work.Height);
+
+                if (_settings.WindowMaximized)
+                {
+                    // 作業領域内に通常サイズを置いてから Maximize（タスクバー重なり防止）
+                    AppWindow.Resize(new SizeInt32(width, height));
+                    int x = work.X + Math.Max(0, (work.Width - width) / 2);
+                    int y = work.Y + Math.Max(0, (work.Height - height) / 2);
+                    AppWindow.Move(new PointInt32(x, y));
+                    if (AppWindow.Presenter is OverlappedPresenter maximizedPresenter)
+                        maximizedPresenter.Maximize();
+                    return;
+                }
+
+                AppWindow.Resize(new SizeInt32(width, height));
+                if (_settings.WindowX >= 0 && _settings.WindowY >= 0)
+                {
+                    int maxX = work.X + Math.Max(0, work.Width - width);
+                    int maxY = work.Y + Math.Max(0, work.Height - height);
+                    int x = Math.Clamp(_settings.WindowX, work.X, maxX);
+                    int y = Math.Clamp(_settings.WindowY, work.Y, maxY);
+                    AppWindow.Move(new PointInt32(x, y));
+                }
+
+                return;
+            }
+
+            AppWindow.Resize(new SizeInt32(width, height));
+            if (_settings.WindowMaximized && AppWindow.Presenter is OverlappedPresenter fallbackPresenter)
+                fallbackPresenter.Maximize();
         }
 
         private void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
@@ -620,6 +599,10 @@ namespace App1
             _gammaReapplyCts?.Dispose();
             _gammaReapplyCts = null;
 
+            SaveWindowBounds();
+            if (!_settings.AutoStart)
+                StartupManager.SyncAutostartWithSettings(false);
+
             _timer.Stop();
             _gammaWatchdogTimer.Stop();
             _gammaTransition.Stop();
@@ -629,6 +612,7 @@ namespace App1
             _trayMessageWindow = null;
             GammaController.ResetGamma();
             AppWindow.Closing -= AppWindow_Closing;
+            AppWindow.Changed -= AppWindow_Changed;
             SingleInstanceManager.Release();
             Close();
         }
@@ -747,9 +731,6 @@ namespace App1
             else
                 _gammaTransition.AnimateTo(settings);
         }
-
-        [DllImport("dwmapi.dll")]
-        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);

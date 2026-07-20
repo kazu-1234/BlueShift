@@ -7,11 +7,29 @@ namespace App1
 {
     public class Settings
     {
+        /// <summary>デフォルトはシステム連動。</summary>
+        public AppThemePreference ThemePreference { get; set; } = AppThemePreference.System;
+
         public bool AutoStart { get; set; } = false;
-        /// <summary>true: ログオンタスク / false: スタートアップ（Run レジストリ）</summary>
-        public bool UseLogonTask { get; set; } = false;
+
+        /// <summary>旧設定互換（ログオンタスク専用化後は未使用）。</summary>
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public bool? UseLogonTask { get; set; }
+
         public bool IsFilterEnabled { get; set; } = true;
         public List<Pattern> Patterns { get; set; } = new List<Pattern>();
+
+        public int WindowWidth { get; set; } = 960;
+        public int WindowHeight { get; set; } = 680;
+
+        /// <summary>未保存時は -1。次回起動で位置を復元する。</summary>
+        public int WindowX { get; set; } = -1;
+
+        /// <summary>未保存時は -1。次回起動で位置を復元する。</summary>
+        public int WindowY { get; set; } = -1;
+
+        /// <summary>前回終了時に最大化されていたか。</summary>
+        public bool WindowMaximized { get; set; }
 
         private static string SettingsFilePath =>
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BlueShift", "settings.json");
