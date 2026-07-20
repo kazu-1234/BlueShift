@@ -1,4 +1,5 @@
 using Microsoft.UI.Dispatching;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using System;
 using System.Collections.ObjectModel;
@@ -17,6 +18,7 @@ namespace App1
     public sealed class AppRuntime : IDisposable
     {
         private readonly Application _app;
+        private readonly DispatcherQueue _uiDispatcher;
         private readonly Settings _settings;
         private readonly ObservableCollection<Pattern> _patterns;
         private readonly AppState _appState;
@@ -37,6 +39,9 @@ namespace App1
         public AppRuntime(Application app)
         {
             _app = app;
+            // 二重起動リスナーは BG スレッドから来るため、UI Dispatcher を起動時に保持する
+            _uiDispatcher = DispatcherQueue.GetForCurrentThread()
+                ?? throw new InvalidOperationException("AppRuntime must be created on the UI thread.");
             _settings = Settings.Load();
             _patterns = new ObservableCollection<Pattern>(_settings.Patterns.OrderBy(p => p.Time));
             _appState = new AppState(_settings, _patterns);
@@ -253,12 +258,37 @@ namespace App1
 
             if (showEvent != null)
             {
-                Task.Run(() => ListenLoop(showEvent, token, () => ShowOrCreateMainWindow()), token);
+                Task.Run(() => ListenShowLoop(showEvent, token, () => ShowOrCreateMainWindow()), token);
             }
 
             if (exitEvent != null)
             {
                 Task.Run(() => ListenLoop(exitEvent, token, () => GetDispatcherQueue()?.TryEnqueue(ExitApplication)), token);
+            }
+        }
+
+        private static void ListenShowLoop(EventWaitHandle handle, CancellationToken token, Action action)
+        {
+            while (!token.IsCancellationRequested)
+            {
+                bool signaled = false;
+                try
+                {
+                    signaled = handle.WaitOne(500);
+                }
+                catch (ObjectDisposedException)
+                {
+                    break;
+                }
+
+                if (!signaled)
+                    signaled = SingleInstanceManager.TryConsumeShowSignal();
+
+                if (token.IsCancellationRequested)
+                    break;
+
+                if (signaled)
+                    action();
             }
         }
 
@@ -283,25 +313,30 @@ namespace App1
             }
         }
 
-        private DispatcherQueue? GetDispatcherQueue()
-        {
-            try
-            {
-                return DispatcherQueue.GetForCurrentThread();
-            }
-            catch
-            {
-                return null;
-            }
-        }
+        private DispatcherQueue GetDispatcherQueue() => _uiDispatcher;
 
         private static void BringWindowToForeground(Window window)
         {
-            window.AppWindow.IsShownInSwitchers = true;
-            window.Activate();
-            IntPtr hwnd = WindowNative.GetWindowHandle(window);
-            if (hwnd != IntPtr.Zero)
-                SetForegroundWindow(hwnd);
+            try
+            {
+                if (window.AppWindow.Presenter is OverlappedPresenter presenter
+                    && presenter.State == OverlappedPresenterState.Minimized)
+                {
+                    presenter.Restore();
+                }
+
+                window.AppWindow.IsShownInSwitchers = true;
+                window.AppWindow.Show();
+                window.Activate();
+
+                IntPtr hwnd = WindowNative.GetWindowHandle(window);
+                if (hwnd != IntPtr.Zero)
+                    SetForegroundWindow(hwnd);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"BringWindowToForeground failed: {ex.Message}");
+            }
         }
 
         private void RequestGammaReapply()

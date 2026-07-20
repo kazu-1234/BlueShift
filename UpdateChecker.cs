@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -64,12 +65,16 @@ namespace App1
 
                 if (compare > 0)
                 {
+                    var (downloadUrl, assetFileName) = SelectSetupAsset(release["assets"] as JArray);
+
                     return new UpdateCheckResult
                     {
                         Status = UpdateCheckStatus.UpdateAvailable,
                         Message = Strings.Format("Update_Available", latestVersion, CurrentVersion),
                         LatestVersion = latestVersion,
-                        ReleasePageUrl = htmlUrl
+                        ReleasePageUrl = htmlUrl,
+                        DownloadUrl = downloadUrl,
+                        AssetFileName = assetFileName
                     };
                 }
 
@@ -89,6 +94,38 @@ namespace App1
                     Message = Strings.Format("Update_Error", ex.Message)
                 };
             }
+        }
+
+        /// <summary>
+        /// Inno の setup.exe を優先選択する（単体アプリ exe は選ばない）。
+        /// </summary>
+        private static (string? DownloadUrl, string? FileName) SelectSetupAsset(JArray? assets)
+        {
+            if (assets == null)
+                return (null, null);
+
+            string? fallbackUrl = null;
+            string? fallbackName = null;
+
+            foreach (var asset in assets.OfType<JObject>())
+            {
+                string? name = asset["name"]?.ToString();
+                string? url = asset["browser_download_url"]?.ToString();
+                if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(url))
+                    continue;
+
+                if (!name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                // 最優先: *-setup.exe / *setup*.exe
+                if (name.Contains("setup", StringComparison.OrdinalIgnoreCase))
+                    return (url, name);
+
+                fallbackUrl ??= url;
+                fallbackName ??= name;
+            }
+
+            return (fallbackUrl, fallbackName);
         }
 
         private static int CompareVersions(string a, string b)
@@ -122,5 +159,7 @@ namespace App1
         public string Message { get; set; } = string.Empty;
         public string? LatestVersion { get; set; }
         public string? ReleasePageUrl { get; set; }
+        public string? DownloadUrl { get; set; }
+        public string? AssetFileName { get; set; }
     }
 }

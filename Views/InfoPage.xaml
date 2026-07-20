@@ -25,11 +25,19 @@
                             Click="CheckUpdateButton_Click" />
                 </controls:SettingsCard>
 
-                <InfoBar x:Name="UpdateInfoBar"
-                         IsOpen="False"
-                         IsClosable="True"
-                         Severity="Informational"
-                         HorizontalAlignment="Stretch" />
+                <InfoBar x:Name="UpdateInfoBar" IsOpen="False" IsClosable="True" HorizontalAlignment="Stretch" />
+
+                <controls:SettingsCard x:Name="InstallUpdateCard" Visibility="Collapsed">
+                    <controls:SettingsCard.Description>
+                        <StackPanel Spacing="8">
+                            <TextBlock x:Name="InstallStatusText" TextWrapping="Wrap" />
+                            <Button x:Name="InstallUpdateButton"
+                                    x:Uid="Info_InstallUpdate"
+                                    Style="{StaticResource PrimaryActionButtonStyle}"
+                                    Click="InstallUpdateButton_Click" />
+                        </StackPanel>
+                    </controls:SettingsCard.Description>
+                </controls:SettingsCard>
 
                 <TextBlock x:Uid="Info_SectionStatus" Style="{StaticResource SettingsSectionHeaderStyle}" />
                 <controls:SettingsCard>
