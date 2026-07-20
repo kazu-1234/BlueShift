@@ -1,4 +1,4 @@
-// v1.0.31
+// v1.0.34
 
 using Microsoft.UI.Xaml;
 using System;
@@ -33,6 +33,18 @@ namespace App1
             UpdateChecker.LatestReleaseApiUrl =
                 "https://api.github.com/repos/kazu-1234/BlueShift/releases/latest";
 
+            if (HasCommandLineArg("--cleanup-autostart"))
+            {
+                StartupManager.CleanupAutostartOnly();
+                Exit();
+                return;
+            }
+
+            StartupManager.MigrateFromLegacyIfNeeded();
+
+            var settings = Settings.Load();
+            StartupManager.SyncAutostartWithSettings(settings.AutoStart);
+
             bool launchInBackground = HasCommandLineArg("--background");
             bool requestInteractiveShow = !launchInBackground;
 
@@ -42,6 +54,7 @@ namespace App1
                 return;
             }
 
+            ThemeService.Initialize(settings.ThemePreference);
             RegisterGammaResetOnExit();
 
             try
