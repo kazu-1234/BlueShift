@@ -9,17 +9,27 @@
     <views:PageScrollHost>
         <Grid x:Name="ContentArea">
             <StackPanel Style="{StaticResource PageBaseStackPanelStyle}">
-                <StackPanel Orientation="Horizontal" Spacing="24">
-                    <FontIcon Glyph="&#xE706;"
-                              FontSize="48"
-                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                    <StackPanel Spacing="4" VerticalAlignment="Center">
-                        <TextBlock x:Uid="Info_AppName" Style="{StaticResource TitleTextBlockStyle}" />
-                        <TextBlock x:Name="VersionCaptionText"
-                                   Style="{StaticResource CaptionTextBlockStyle}"
-                                   Opacity="0.7" />
-                    </StackPanel>
-                </StackPanel>
+                <TextBlock x:Uid="Page_Info" Style="{StaticResource PageTitleTextStyle}" />
+
+                <TextBlock x:Uid="Info_SectionUpdate" Style="{StaticResource SettingsSectionHeaderFirstStyle}" />
+
+                <controls:SettingsCard>
+                    <controls:SettingsCard.Header>
+                        <StackPanel Spacing="4" MinWidth="0">
+                            <TextBlock x:Name="VersionText" Style="{StaticResource CardHeaderTextStyle}" />
+                            <TextBlock x:Uid="Info_UpdateDesc" Style="{StaticResource CardDescriptionTextStyle}" />
+                        </StackPanel>
+                    </controls:SettingsCard.Header>
+                    <Button x:Name="CheckUpdateButton"
+                            x:Uid="Info_CheckUpdate"
+                            Click="CheckUpdateButton_Click" />
+                </controls:SettingsCard>
+
+                <InfoBar x:Name="UpdateInfoBar"
+                         IsOpen="False"
+                         IsClosable="True"
+                         Severity="Informational"
+                         HorizontalAlignment="Stretch" />
 
                 <TextBlock x:Uid="Info_SectionStatus" Style="{StaticResource SettingsSectionHeaderStyle}" />
                 <controls:SettingsCard>
@@ -63,12 +73,12 @@
                     </controls:SettingsCard.Description>
                 </controls:SettingsCard>
 
-                <TextBlock x:Uid="Info_SectionAbout" Style="{StaticResource SettingsSectionHeaderStyle}" />
+                <TextBlock x:Uid="Info_SectionDisclaimer" Style="{StaticResource SettingsSectionHeaderStyle}" />
                 <controls:SettingsCard>
                     <controls:SettingsCard.Description>
                         <StackPanel Spacing="8">
-                            <TextBlock x:Uid="Info_Description" TextWrapping="Wrap" Opacity="0.8" />
-                            <TextBlock x:Uid="Info_Disclaimer" TextWrapping="Wrap" Opacity="0.6" FontSize="12" />
+                            <TextBlock x:Uid="Info_Description" Style="{StaticResource CardDescriptionTextStyle}" />
+                            <TextBlock x:Uid="Info_Disclaimer" TextWrapping="Wrap" Opacity="0.75" FontSize="12" />
                         </StackPanel>
                     </controls:SettingsCard.Description>
                 </controls:SettingsCard>
@@ -76,4 +86,3 @@
         </Grid>
     </views:PageScrollHost>
 </Page>
-

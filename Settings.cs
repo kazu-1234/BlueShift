@@ -12,6 +12,9 @@ namespace App1
 
         public bool AutoStart { get; set; } = false;
 
+        /// <summary>true のときタスクトレイアイコンを表示しない。</summary>
+        public bool HideTrayIcon { get; set; }
+
         /// <summary>旧設定互換（ログオンタスク専用化後は未使用）。</summary>
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public bool? UseLogonTask { get; set; }

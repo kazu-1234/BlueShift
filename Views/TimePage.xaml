@@ -10,13 +10,15 @@
     <views:PageScrollHost>
         <Grid x:Name="ContentArea">
             <StackPanel Style="{StaticResource PageBaseStackPanelStyle}">
-                <TextBlock x:Uid="Time_SectionToggle" Style="{StaticResource SettingsSectionHeaderStyle}" />
+                <TextBlock x:Uid="Page_Time" Style="{StaticResource PageTitleTextStyle}" />
+
+                <TextBlock x:Uid="Time_SectionToggle" Style="{StaticResource SettingsSectionHeaderFirstStyle}" />
 
                 <controls:SettingsCard>
                     <controls:SettingsCard.Header>
                         <StackPanel Spacing="4" MinWidth="0">
-                            <TextBlock x:Uid="Time_EnableFilter" FontWeight="SemiBold" />
-                            <TextBlock x:Uid="Time_EnableFilterDesc" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                            <TextBlock x:Uid="Time_EnableFilter" Style="{StaticResource CardHeaderTextStyle}" />
+                            <TextBlock x:Uid="Time_EnableFilterDesc" Style="{StaticResource CardDescriptionTextStyle}" />
                         </StackPanel>
                     </controls:SettingsCard.Header>
                     <ToggleSwitch x:Name="FilterToggle" Toggled="FilterToggle_Toggled" />

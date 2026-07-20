@@ -10,6 +10,15 @@ namespace App1
         [STAThread]
         static void Main(string[] args)
         {
+            // インストーラ等から既存プロセスへ終了依頼（WinUI を起動しない）。
+            if (HasArg(args, "--exit"))
+            {
+                SingleInstanceManager.SignalExit();
+                // 終了完了を待つ（ファイルロック解除のため）
+                Thread.Sleep(1500);
+                return;
+            }
+
             // WinUI を起動せず、画面のガンマだけ即座に戻す。
             if (HasArg(args, "--reset-gamma"))
             {
@@ -21,6 +30,14 @@ namespace App1
             if (HasArg(args, "--cleanup-autostart"))
             {
                 StartupManager.CleanupAutostartOnly();
+                return;
+            }
+
+            // インストール直後など、設定に合わせてログオンタスクを現行 exe へ同期して終了。
+            if (HasArg(args, "--sync-autostart"))
+            {
+                var settings = Settings.Load();
+                StartupManager.SyncAutostartWithSettings(settings.AutoStart);
                 return;
             }
 

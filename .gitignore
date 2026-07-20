@@ -2,6 +2,9 @@
 bin/
 obj/
 publish/
+dist/
+BlueShift-v*-win-x64*.exe
+BlueShift-v*-win-x64*.zip
 *.user
 *.suo
 

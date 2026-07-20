@@ -1,0 +1,99 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <RootNamespace>App1</RootNamespace>
+    <AssemblyName>BlueShift</AssemblyName>
+    <ApplicationIcon>Assets\BlueShift.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x86;x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
+    <Platform Condition="'$(Platform)' == '' Or '$(Platform)' == 'AnyCPU'">x64</Platform>
+    <UseWinUI>true</UseWinUI>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <WindowsPackageType>None</WindowsPackageType>
+    <ApplicationDefaultLanguage>ja-JP</ApplicationDefaultLanguage>
+    <Version>1.0.47</Version>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <DefineConstants>DISABLE_XAML_GENERATED_MAIN;DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Debug ビルド前に常駐�Eロセスを終亁E�E��E�、exe ロチE�E��E�によるビルド失敗を防ぁE-->
+  <Target Name="StopRunningInstanceBeforeBuild" BeforeTargets="PrepareForBuild" Condition="'$(Configuration)' == 'Debug'">
+    <Exec Command="taskkill /F /IM $(AssemblyName).exe /T 2&gt;nul" IgnoreExitCode="true" />
+  </Target>
+
+  <ItemGroup>
+    <Content Include="Assets\BlueShift.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ResetBlueShiftGamma.bat">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.250402" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="TaskScheduler" Version="2.12.2" />
+
+    <!-- CommunityToolkit 経由のメタパッケージ賁E�E��E�を無効匁E-->
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.0.1">
+      <ExcludeAssets>all</ExcludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.0.12" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.DWrite" Version="2.0.26041403" />
+
+    <!-- AI/ML/Widgets は明示皁E�E��E�賁E�E��E�を落とす（未使用�E�E�E�E-->
+    <PackageReference Include="Microsoft.WindowsAppSDK.ML" Version="2.0.300">
+      <ExcludeAssets>all</ExcludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.WindowsAppSDK.AI" Version="2.0.185">
+      <ExcludeAssets>all</ExcludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.WindowsAppSDK.Widgets" Version="2.0.4">
+      <ExcludeAssets>all</ExcludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Windows.AI.MachineLearning" Version="2.0.300">
+      <ExcludeAssets>all</ExcludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!--
+    unpackaged の publish で BlueShift.pri / .xbf が落ちると
+    Microsoft.UI.Xaml.dll で 0xc000027b クラチE�E��E�ュするため明示同梱する、E  -->
+  <Target Name="IncludeXamlResourcesForPublish" AfterTargets="ComputeFilesToPublish">
+    <PropertyGroup>
+      <_AppPriFile>$(ProjectDir)$(OutputPath)$(AssemblyName).pri</_AppPriFile>
+    </PropertyGroup>
+    <ItemGroup Condition="Exists('$(_AppPriFile)')">
+      <ResolvedFileToPublish Include="$(_AppPriFile)" RelativePath="$(AssemblyName).pri" CopyToPublishDirectory="PreserveNewest" />
+      <ResolvedFileToPublish Include="$(_AppPriFile)" RelativePath="resources.pri" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+    <ItemGroup>
+      <_XbfForPublish Include="$(ProjectDir)$(OutputPath)**\*.xbf" />
+      <ResolvedFileToPublish Include="@(_XbfForPublish)" RelativePath="%(_XbfForPublish.RecursiveDir)%(_XbfForPublish.Filename)%(_XbfForPublish.Extension)" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+  <!-- publish から未使用の巨大 native・仁ERID・pdb を除夁E-->
+  <Target Name="ExcludeUnusedPublishFiles" AfterTargets="IncludeXamlResourcesForPublish">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(ResolvedFileToPublish.Identity)').Contains('onnxruntime'))" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(ResolvedFileToPublish.Identity)').Contains('DirectML'))" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(ResolvedFileToPublish.Identity)').Contains('Microsoft.Windows.AI'))" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(ResolvedFileToPublish.Identity)').Contains('Microsoft.WindowsAppSDK.ML'))" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(ResolvedFileToPublish.Identity)').Contains('win-arm64'))" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(ResolvedFileToPublish.Identity)').Contains('win-arm64ec'))" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb'" />
+    </ItemGroup>
+  </Target>
+</Project>
