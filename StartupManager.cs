@@ -105,7 +105,8 @@ namespace App1
                 definition.Triggers.Add(new LogonTrigger
                 {
                     UserId = Environment.UserDomainName + @"\" + Environment.UserName,
-                    Delay = TimeSpan.Zero
+                    // デスクトップ／表示まわりが安定してから起動（トレイのみ・機能未適用を防ぐ）
+                    Delay = TimeSpan.FromSeconds(15)
                 });
                 definition.Actions.Add(new ExecAction(exePath, BackgroundArg, workingDir));
 

@@ -44,6 +44,15 @@ namespace App1
             ApplySettings(_appliedSettings);
         }
 
+        /// <summary>遷移状態を恒等（Off）に合わせ、必要なら実際のガンマもリセットする。</summary>
+        public void ResetToOff(bool applyToDisplay = true)
+        {
+            StopAnimation();
+            _appliedSettings = GammaSettings.Off;
+            if (applyToDisplay)
+                GammaController.ResetGamma();
+        }
+
         /// <summary>指定強度のみへ遷移する（色温度は中立）。</summary>
         public void AnimateTo(int targetIntensity, TimeSpan? duration = null)
         {
