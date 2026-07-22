@@ -240,8 +240,11 @@ namespace App1
             };
             _gammaWatchdogTimer.Tick += (_, _) => EnsureGammaApplied();
 
-            GammaController.ResetGamma();
-            ApplyCurrentGamma();
+            // 起動直後は AnimateTo（DispatcherTimer）に頼らず即時適用し、
+            // ログオン直後の GDI 失敗／OS 上書きに備えて遅延再適用も行う。
+            _gammaTransition.ResetToOff(applyToDisplay: true);
+            ApplyCurrentGamma(forceReapply: true);
+            ScheduleDelayedGammaReapplies();
             ScheduleNextGammaCheck();
             _gammaWatchdogTimer.Start();
         }
