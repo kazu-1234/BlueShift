@@ -347,8 +347,19 @@ namespace App1
             if (_isExitingProcess || !_gammaInitialized || _gammaPreviewActive)
                 return;
 
+            // スリープ復帰後は DispatcherTimer が止まることがあるため、再適用前に明示的に再始動する
+            RestartGammaTimers();
             ApplyCurrentGamma(forceReapply: true);
             ScheduleDelayedGammaReapplies();
+        }
+
+        /// <summary>スリープ復帰後などにスケジュール／ウォッチドッグ用 DispatcherTimer を起こす。</summary>
+        private void RestartGammaTimers()
+        {
+            if (_gammaWatchdogTimer.IsEnabled)
+                _gammaWatchdogTimer.Stop();
+            _gammaWatchdogTimer.Start();
+            ScheduleNextGammaCheck();
         }
 
         private void EnsureGammaApplied()

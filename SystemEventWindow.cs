@@ -9,8 +9,9 @@ namespace App1
     /// </summary>
     internal sealed class SystemEventWindow : IDisposable
     {
+        // GUID_CONSOLE_DISPLAY_STATE（末尾は 12 hex。誤った 13 桁だと型初期化失敗で監視全体が無効になる）
         private static readonly Guid ConsoleDisplayStateGuid =
-            new("6fe69556-704a-47a0-aa35-2f285d73bf877");
+            new("6fe69556-704a-47a0-aa35-2f285d73bf87");
 
         private const string WindowClassName = "BlueShiftSystemEventWindow_v1";
         private const uint WM_DISPLAYCHANGE = 0x007E;
