@@ -7,7 +7,7 @@ namespace App1
     public sealed class GammaTransitionService
     {
         private const int FrameIntervalMs = 16;
-        private static readonly TimeSpan DefaultDuration = TimeSpan.FromMilliseconds(800);
+        private static readonly TimeSpan DefaultDuration = TimeSpan.FromMilliseconds(2500);
 
         private readonly DispatcherTimer _timer;
         private GammaSettings _fromSettings;
@@ -28,20 +28,31 @@ namespace App1
 
         public GammaSettings AppliedSettings => _appliedSettings;
 
+        public bool IsAnimating => _isAnimating;
+
+        /// <summary>既定の遷移時間（起動・スケジュール切替で共有）。</summary>
+        public static TimeSpan DefaultAnimationDuration => DefaultDuration;
+
         /// <summary>スライダードラッグ等、即時反映する。</summary>
         public void ApplyImmediate(GammaSettings settings)
         {
             StopAnimation();
-            _appliedSettings = settings.Clamp();
-            ApplySettings(_appliedSettings);
+            var clamped = settings.Clamp();
+            if (ApplySettings(clamped))
+                _appliedSettings = clamped;
         }
 
         /// <summary>OS によるガンマリセット後など、同一設定でも再適用する。</summary>
-        public void ForceApply(GammaSettings settings)
+        /// <returns>GDI 適用に成功した場合 true。</returns>
+        public bool ForceApply(GammaSettings settings)
         {
             StopAnimation();
-            _appliedSettings = settings.Clamp();
-            ApplySettings(_appliedSettings);
+            var clamped = settings.Clamp();
+            if (!ApplySettings(clamped))
+                return false;
+
+            _appliedSettings = clamped;
+            return true;
         }
 
         /// <summary>遷移状態を恒等（Off）に合わせ、必要なら実際のガンマもリセットする。</summary>
@@ -101,8 +112,10 @@ namespace App1
                     + (_toSettings.ColorTemperatureKelvin - _fromSettings.ColorTemperatureKelvin) * progress)
             };
 
-            _appliedSettings = current.Clamp();
-            ApplySettings(_appliedSettings);
+            var clamped = current.Clamp();
+            // アニメ中は論理進捗を保持し、GDI 失敗時は次フレームで再試行する
+            ApplySettings(clamped);
+            _appliedSettings = clamped;
 
             if (progress >= 1.0)
                 StopAnimation();
@@ -114,9 +127,9 @@ namespace App1
             _isAnimating = false;
         }
 
-        private static void ApplySettings(GammaSettings settings)
+        private static bool ApplySettings(GammaSettings settings)
         {
-            GammaController.SetGamma(settings);
+            return GammaController.SetGamma(settings);
         }
     }
 }

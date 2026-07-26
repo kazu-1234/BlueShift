@@ -29,21 +29,21 @@ namespace App1
         }
 
         /// <summary>強制終了後も残りうるガンマ補正を標準の線形ランプへ戻す。</summary>
-        public static void ResetGamma()
+        public static bool ResetGamma()
         {
-            ApplyRamp(CreateIdentityRamp());
+            return ApplyRamp(CreateIdentityRamp());
         }
 
-        public static void SetGamma(int intensity)
+        public static bool SetGamma(int intensity)
         {
-            SetGamma(new GammaSettings
+            return SetGamma(new GammaSettings
             {
                 Intensity = intensity,
                 ColorTemperatureKelvin = GammaSettings.DefaultColorTemperatureKelvin
             });
         }
 
-        public static void SetGamma(GammaSettings settings)
+        public static bool SetGamma(GammaSettings settings)
         {
             settings = settings.Clamp();
 
@@ -52,12 +52,9 @@ namespace App1
                 settings.ColorTemperatureKelvin < GammaSettings.DefaultColorTemperatureKelvin;
 
             if (!hasIntensity && !hasTemperatureShift)
-            {
-                ResetGamma();
-                return;
-            }
+                return ResetGamma();
 
-            ApplyRamp(CreateFilteredRamp(settings));
+            return ApplyRamp(CreateFilteredRamp(settings));
         }
 
         /// <summary>OS や他アプリによりガンマが戻されていないかを概算で判定する。</summary>
@@ -192,15 +189,15 @@ namespace App1
             return ramp;
         }
 
-        private static void ApplyRamp(RAMP ramp)
+        private static bool ApplyRamp(RAMP ramp)
         {
             IntPtr dc = GetDC(IntPtr.Zero);
             if (dc == IntPtr.Zero)
-                return;
+                return false;
 
             try
             {
-                SetDeviceGammaRamp(dc, ref ramp);
+                return SetDeviceGammaRamp(dc, ref ramp);
             }
             finally
             {
