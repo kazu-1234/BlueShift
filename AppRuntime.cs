@@ -26,6 +26,9 @@ namespace App1
         private readonly DispatcherTimer _gammaScheduleTimer = new();
         private readonly DispatcherTimer _gammaWatchdogTimer = new() { Interval = TimeSpan.FromSeconds(30) };
 
+        /// <summary>開始時点からの絶対遅延（累積 Delay にしない）。SPM と同型。</summary>
+        private static readonly int[] GammaReapplyDelaysMs = { 800, 2000, 5000, 15000 };
+
         private MainWindow? _mainWindow;
         private TrayMessageWindow? _trayMessageWindow;
         private SystemEventWindow? _systemEventWindow;
@@ -35,6 +38,8 @@ namespace App1
         private bool _gammaPreviewActive;
         private bool _trayInitialized;
         private bool _isExitingProcess;
+        /// <summary>スリープ復帰後など、IsLikelyApplied を信用せず Force する期限（UTC）。</summary>
+        private DateTime _unconditionalReapplyUntil = DateTime.MinValue;
 
         public AppRuntime(Application app)
         {
@@ -240,11 +245,11 @@ namespace App1
             };
             _gammaWatchdogTimer.Tick += (_, _) => EnsureGammaApplied();
 
-            // 起動直後は AnimateTo（DispatcherTimer）に頼らず即時適用し、
-            // ログオン直後の GDI 失敗／OS 上書きに備えて遅延再適用も行う。
+            // 起動時は Off→目標をゆっくり遷移し、アニメ完了後に遅延 Force で GDI/OS 上書きを吸収する。
             _gammaTransition.ResetToOff(applyToDisplay: true);
-            ApplyCurrentGamma(forceReapply: true);
-            ScheduleDelayedGammaReapplies();
+            ApplyCurrentGamma(forceReapply: false);
+            ScheduleDelayedGammaReapplies(
+                baseOffsetMs: (int)GammaTransitionService.DefaultAnimationDuration.TotalMilliseconds);
             ScheduleNextGammaCheck();
             _gammaWatchdogTimer.Start();
         }
@@ -347,6 +352,9 @@ namespace App1
             if (_isExitingProcess || !_gammaInitialized || _gammaPreviewActive)
                 return;
 
+            // ドライバが GetDeviceGammaRamp を嘘で返す間は IsLikelyApplied を信用しない
+            _unconditionalReapplyUntil = DateTime.UtcNow.AddSeconds(60);
+
             // スリープ復帰後は DispatcherTimer が止まることがあるため、再適用前に明示的に再始動する
             RestartGammaTimers();
             ApplyCurrentGamma(forceReapply: true);
@@ -366,6 +374,12 @@ namespace App1
         {
             if (_isExitingProcess || !_gammaInitialized || _gammaPreviewActive)
                 return;
+
+            if (DateTime.UtcNow < _unconditionalReapplyUntil)
+            {
+                ApplyCurrentGamma(forceReapply: true);
+                return;
+            }
 
             if (!TryGetExpectedGammaSettings(out var expected))
                 return;
@@ -391,7 +405,8 @@ namespace App1
             return true;
         }
 
-        private void ScheduleDelayedGammaReapplies()
+        /// <param name="baseOffsetMs">起動アニメ完了待ちなど、遅延列全体を後ろへずらす量。</param>
+        private void ScheduleDelayedGammaReapplies(int baseOffsetMs = 0)
         {
             _gammaReapplyCts?.Cancel();
             _gammaReapplyCts?.Dispose();
@@ -400,11 +415,14 @@ namespace App1
 
             Task.Run(async () =>
             {
-                foreach (int delayMs in new[] { 800, 2000, 5000 })
+                var start = DateTime.UtcNow;
+                foreach (int delayMs in GammaReapplyDelaysMs)
                 {
                     try
                     {
-                        await Task.Delay(delayMs, token).ConfigureAwait(false);
+                        var wait = start.AddMilliseconds(baseOffsetMs + delayMs) - DateTime.UtcNow;
+                        if (wait > TimeSpan.Zero)
+                            await Task.Delay(wait, token).ConfigureAwait(false);
                     }
                     catch (TaskCanceledException)
                     {
@@ -417,6 +435,9 @@ namespace App1
                     GetDispatcherQueue()?.TryEnqueue(() =>
                     {
                         if (_isExitingProcess || !_gammaInitialized || _gammaPreviewActive)
+                            return;
+                        // 起動アニメ中に Force すると遷移が潰れるためスキップ（オフセット後は通常完了済み）
+                        if (_gammaTransition.IsAnimating)
                             return;
                         ApplyCurrentGamma(forceReapply: true);
                     });
