@@ -1,10 +1,14 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace App1
 {
     public static class GammaController
     {
+        /// <summary>復帰直後などドライバ未準備時の短バックオフ再試行。</summary>
+        private static readonly int[] ApplyRetryDelaysMs = { 0, 50, 150, 400 };
+
         [DllImport("gdi32.dll")]
         private static extern bool SetDeviceGammaRamp(IntPtr hdc, ref RAMP lpRamp);
 
@@ -191,18 +195,27 @@ namespace App1
 
         private static bool ApplyRamp(RAMP ramp)
         {
-            IntPtr dc = GetDC(IntPtr.Zero);
-            if (dc == IntPtr.Zero)
-                return false;
+            foreach (int delayMs in ApplyRetryDelaysMs)
+            {
+                if (delayMs > 0)
+                    Thread.Sleep(delayMs);
 
-            try
-            {
-                return SetDeviceGammaRamp(dc, ref ramp);
+                IntPtr dc = GetDC(IntPtr.Zero);
+                if (dc == IntPtr.Zero)
+                    continue;
+
+                try
+                {
+                    if (SetDeviceGammaRamp(dc, ref ramp))
+                        return true;
+                }
+                finally
+                {
+                    ReleaseDC(IntPtr.Zero, dc);
+                }
             }
-            finally
-            {
-                ReleaseDC(IntPtr.Zero, dc);
-            }
+
+            return false;
         }
     }
 }

@@ -27,18 +27,25 @@ namespace App1
         private readonly DispatcherTimer _gammaWatchdogTimer = new() { Interval = TimeSpan.FromSeconds(30) };
 
         /// <summary>開始時点からの絶対遅延（累積 Delay にしない）。SPM と同型。</summary>
-        private static readonly int[] GammaReapplyDelaysMs = { 800, 2000, 5000, 15000 };
+        private static readonly int[] GammaReapplyDelaysMs =
+            { 800, 2000, 5000, 15000, 30000, 60000, 90000 };
+
+        private const int UnconditionalReapplySeconds = 120;
+        private const int WatchdogNormalIntervalMs = 30000;
+        private const int WatchdogUnconditionalIntervalMs = 2500;
 
         private MainWindow? _mainWindow;
         private TrayMessageWindow? _trayMessageWindow;
         private SystemEventWindow? _systemEventWindow;
+        private Timer? _gammaThreadingWatchdog;
         private CancellationTokenSource? _listenerCts;
         private CancellationTokenSource? _gammaReapplyCts;
         private bool _gammaInitialized;
+        private bool _systemEventInitialized;
         private bool _gammaPreviewActive;
         private bool _trayInitialized;
         private bool _isExitingProcess;
-        /// <summary>スリープ復帰後など、IsLikelyApplied を信用せず Force する期限（UTC）。</summary>
+        /// <summary>起動・スリープ復帰後など、IsLikelyApplied を信用せず Force する期限（UTC）。</summary>
         private DateTime _unconditionalReapplyUntil = DateTime.MinValue;
 
         public AppRuntime(Application app)
@@ -125,11 +132,15 @@ namespace App1
             _gammaReapplyCts?.Dispose();
             _gammaReapplyCts = null;
 
+            _gammaThreadingWatchdog?.Dispose();
+            _gammaThreadingWatchdog = null;
+
             _gammaScheduleTimer.Stop();
             _gammaWatchdogTimer.Stop();
             _gammaTransition.Stop();
             _systemEventWindow?.Dispose();
             _systemEventWindow = null;
+            _systemEventInitialized = false;
             _trayMessageWindow?.Dispose();
             _trayMessageWindow = null;
 
@@ -225,16 +236,7 @@ namespace App1
                 return;
 
             _gammaInitialized = true;
-            try
-            {
-                _systemEventWindow = new SystemEventWindow();
-                _systemEventWindow.SystemDisplayStateChanged += () =>
-                    GetDispatcherQueue()?.TryEnqueue(RequestGammaReapply);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"System event monitor init failed: {ex.Message}");
-            }
+            EnsureSystemEventMonitor();
 
             _gammaScheduleTimer.Tick += (_, _) =>
             {
@@ -243,15 +245,51 @@ namespace App1
                 ApplyCurrentGamma();
                 ScheduleNextGammaCheck();
             };
-            _gammaWatchdogTimer.Tick += (_, _) => EnsureGammaApplied();
+            _gammaWatchdogTimer.Tick += (_, _) =>
+            {
+                EnsureSystemEventMonitor();
+                EnsureGammaApplied();
+                SyncWatchdogIntervals();
+            };
 
-            // 起動時は Off→目標をゆっくり遷移し、アニメ完了後に遅延 Force で GDI/OS 上書きを吸収する。
+            // 起動時も unconditional Force 窓を開き、T+0 Force + 遅延 Force と Threading ウォッチドッグで吸収する。
+            BeginUnconditionalReapplyPeriod();
+            SyncWatchdogIntervals();
             _gammaTransition.ResetToOff(applyToDisplay: true);
-            ApplyCurrentGamma(forceReapply: false);
-            ScheduleDelayedGammaReapplies(
-                baseOffsetMs: (int)GammaTransitionService.DefaultAnimationDuration.TotalMilliseconds);
+            ApplyCurrentGamma(forceReapply: true);
+            ScheduleDelayedGammaReapplies();
             ScheduleNextGammaCheck();
+            SyncWatchdogIntervals();
             _gammaWatchdogTimer.Start();
+            StartThreadingWatchdog();
+        }
+
+        /// <summary>復帰監視窓。失敗時はフラグを戻し、ウォッチドッグから再試行可能にする（SPM 同型）。</summary>
+        private void EnsureSystemEventMonitor()
+        {
+            if (_systemEventInitialized)
+                return;
+
+            try
+            {
+                _systemEventWindow = new SystemEventWindow();
+                _systemEventWindow.SystemDisplayStateChanged += OnSystemDisplayStateChanged;
+                _systemEventInitialized = true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"System event monitor init failed: {ex.Message}");
+                _systemEventWindow?.Dispose();
+                _systemEventWindow = null;
+                _systemEventInitialized = false;
+            }
+        }
+
+        /// <summary>専用スレッドからの復帰通知。Dispatcher 不通時は GDI を直接 Force する。</summary>
+        private void OnSystemDisplayStateChanged()
+        {
+            if (!(GetDispatcherQueue()?.TryEnqueue(RequestGammaReapply) ?? false))
+                RequestGammaReapplyFallbackDirect();
         }
 
         private void StartListeners()
@@ -353,7 +391,7 @@ namespace App1
                 return;
 
             // ドライバが GetDeviceGammaRamp を嘘で返す間は IsLikelyApplied を信用しない
-            _unconditionalReapplyUntil = DateTime.UtcNow.AddSeconds(60);
+            BeginUnconditionalReapplyPeriod();
 
             // スリープ復帰後は DispatcherTimer が止まることがあるため、再適用前に明示的に再始動する
             RestartGammaTimers();
@@ -361,13 +399,94 @@ namespace App1
             ScheduleDelayedGammaReapplies();
         }
 
+        /// <summary>Dispatcher 不通時のフォールバック。タイマー再始動は諦め、GDI Force + 遅延列のみ行う。</summary>
+        private void RequestGammaReapplyFallbackDirect()
+        {
+            if (_isExitingProcess || !_gammaInitialized || _gammaPreviewActive)
+                return;
+
+            BeginUnconditionalReapplyPeriod();
+            ForceApplyExpectedGammaDirect();
+            ScheduleDelayedGammaReapplies();
+            StartThreadingWatchdog();
+        }
+
+        /// <summary>UI 更新なしで期待ガンマを ForceApply（任意スレッド可）。</summary>
+        private void ForceApplyExpectedGammaDirect()
+        {
+            if (!TryGetExpectedGammaSettings(out var expected))
+            {
+                if (!_settings.IsFilterEnabled || !_patterns.Any())
+                    _gammaTransition.ForceApply(GammaSettings.Off);
+                return;
+            }
+
+            _gammaTransition.ForceApply(expected);
+        }
+
+        private void BeginUnconditionalReapplyPeriod()
+        {
+            _unconditionalReapplyUntil = DateTime.UtcNow.AddSeconds(UnconditionalReapplySeconds);
+        }
+
         /// <summary>スリープ復帰後などにスケジュール／ウォッチドッグ用 DispatcherTimer を起こす。</summary>
         private void RestartGammaTimers()
         {
             if (_gammaWatchdogTimer.IsEnabled)
                 _gammaWatchdogTimer.Stop();
+            SyncWatchdogIntervals();
             _gammaWatchdogTimer.Start();
+            StartThreadingWatchdog();
             ScheduleNextGammaCheck();
+        }
+
+        /// <summary>DispatcherTimer が止まっても Force できる Threading.Timer バックアップ。</summary>
+        private void StartThreadingWatchdog()
+        {
+            int intervalMs = DateTime.UtcNow < _unconditionalReapplyUntil
+                ? WatchdogUnconditionalIntervalMs
+                : WatchdogNormalIntervalMs;
+
+            if (_gammaThreadingWatchdog == null)
+            {
+                _gammaThreadingWatchdog = new Timer(
+                    _ =>
+                    {
+                        if (!(GetDispatcherQueue()?.TryEnqueue(() =>
+                            {
+                                if (_isExitingProcess || !_gammaInitialized)
+                                    return;
+                                EnsureSystemEventMonitor();
+                                EnsureGammaApplied();
+                                SyncWatchdogIntervals();
+                            }) ?? false))
+                        {
+                            if (!_isExitingProcess && _gammaInitialized && !_gammaPreviewActive
+                                && DateTime.UtcNow < _unconditionalReapplyUntil)
+                                ForceApplyExpectedGammaDirect();
+                        }
+                    },
+                    null,
+                    intervalMs,
+                    intervalMs);
+            }
+            else
+            {
+                _gammaThreadingWatchdog.Change(intervalMs, intervalMs);
+            }
+        }
+
+        private void SyncWatchdogIntervals()
+        {
+            int intervalMs = DateTime.UtcNow < _unconditionalReapplyUntil
+                ? WatchdogUnconditionalIntervalMs
+                : WatchdogNormalIntervalMs;
+            var interval = TimeSpan.FromMilliseconds(intervalMs);
+
+            if (_gammaWatchdogTimer.Interval != interval)
+                _gammaWatchdogTimer.Interval = interval;
+
+            _gammaThreadingWatchdog?.Change(intervalMs, intervalMs);
         }
 
         private void EnsureGammaApplied()
@@ -432,15 +551,17 @@ namespace App1
                     if (token.IsCancellationRequested || _isExitingProcess)
                         break;
 
-                    GetDispatcherQueue()?.TryEnqueue(() =>
+                    if (!(GetDispatcherQueue()?.TryEnqueue(() =>
+                        {
+                            if (_isExitingProcess || !_gammaInitialized || _gammaPreviewActive)
+                                return;
+                            // ForceApply は StopAnimation 済み。スタックしたアニメもここで救出する。
+                            ApplyCurrentGamma(forceReapply: true);
+                        }) ?? false))
                     {
-                        if (_isExitingProcess || !_gammaInitialized || _gammaPreviewActive)
-                            return;
-                        // 起動アニメ中に Force すると遷移が潰れるためスキップ（オフセット後は通常完了済み）
-                        if (_gammaTransition.IsAnimating)
-                            return;
-                        ApplyCurrentGamma(forceReapply: true);
-                    });
+                        if (!_isExitingProcess && _gammaInitialized && !_gammaPreviewActive)
+                            ForceApplyExpectedGammaDirect();
+                    }
                 }
             }, token);
         }
