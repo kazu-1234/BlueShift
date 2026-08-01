@@ -1,11 +1,14 @@
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace App1
 {
     /// <summary>
     /// スリープ復帰・画面復帰・セッション解除など、ガンマが OS によりリセットされうるイベントを監視する非表示ウィンドウ。
-    /// タスクトレイとは独立して常に生成する。
+    /// 専用 STA メッセージループで動作し、UI スレッドの詰まりに依存しない。
     /// </summary>
     internal sealed class SystemEventWindow : IDisposable
     {
@@ -13,7 +16,13 @@ namespace App1
         private static readonly Guid ConsoleDisplayStateGuid =
             new("6fe69556-704a-47a0-aa35-2f285d73bf87");
 
-        private const string WindowClassName = "BlueShiftSystemEventWindow_v1";
+        // GUID_MONITOR_POWER_ON（Modern Standby 等で CONSOLE_DISPLAY_STATE が来ない機種の補完）
+        private static readonly Guid MonitorPowerOnGuid =
+            new("02731015-4510-4526-99e6-e5a17ebd1aea");
+
+        private const string WindowClassName = "BlueShiftSystemEventWindow_v2";
+        private const uint WM_CLOSE = 0x0010;
+        private const uint WM_DESTROY = 0x0002;
         private const uint WM_DISPLAYCHANGE = 0x007E;
         private const uint WM_POWERBROADCAST = 0x0218;
         private const uint WM_WTSSESSION_CHANGE = 0x02B1;
@@ -30,49 +39,118 @@ namespace App1
         private const uint WS_EX_TOOLWINDOW = 0x00000080;
         private const uint WS_EX_NOACTIVATE = 0x08000000;
         private const int ERROR_CLASS_ALREADY_EXISTS = 1410;
+        private const int CoalesceMs = 300;
+        private const int ReadyTimeoutMs = 10000;
 
         private static readonly WndProcDelegate StaticWndProc = WindowProc;
         private static bool _classRegistered;
         private static IntPtr _hInstance;
 
+        private readonly ManualResetEventSlim _ready = new(false);
+        private readonly object _notifyGate = new();
+        private readonly Thread _thread;
+
         private IntPtr _hwnd;
         private IntPtr _displayStateNotification = IntPtr.Zero;
+        private IntPtr _monitorPowerNotification = IntPtr.Zero;
         private GCHandle _selfHandle;
+        private Exception? _initError;
+        private bool _disposed;
+        private bool _coalesceWindowOpen;
+        private bool _coalesceTrailingPending;
 
         public event Action? SystemDisplayStateChanged;
 
         public SystemEventWindow()
         {
-            EnsureClassRegistered();
-
-            _hwnd = CreateWindowEx(
-                WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
-                WindowClassName,
-                "BlueShiftSystemEvent",
-                WS_POPUP,
-                0, 0, 1, 1,
-                IntPtr.Zero,
-                IntPtr.Zero,
-                _hInstance,
-                IntPtr.Zero);
-
-            if (_hwnd == IntPtr.Zero)
-                throw new InvalidOperationException($"CreateWindowEx failed: {Marshal.GetLastWin32Error()}");
-
-            _selfHandle = GCHandle.Alloc(this);
-            SetWindowLongPtr(_hwnd, GWLP_USERDATA, GCHandle.ToIntPtr(_selfHandle));
-
-            if (!WTSRegisterSessionNotification(_hwnd, NOTIFY_FOR_THIS_SESSION))
+            _thread = new Thread(ThreadMain)
             {
-                int error = Marshal.GetLastWin32Error();
-                System.Diagnostics.Debug.WriteLine($"WTSRegisterSessionNotification failed: {error}");
+                IsBackground = true,
+                Name = "BlueShiftSystemEvent"
+            };
+            _thread.SetApartmentState(ApartmentState.STA);
+            _thread.Start();
+
+            if (!_ready.Wait(ReadyTimeoutMs))
+            {
+                RequestShutdown();
+                throw new TimeoutException("SystemEventWindow message thread failed to start.");
             }
 
-            Guid displayGuid = ConsoleDisplayStateGuid;
-            _displayStateNotification = RegisterPowerSettingNotification(
-                _hwnd,
-                ref displayGuid,
-                DEVICE_NOTIFY_WINDOW_HANDLE);
+            if (_initError != null)
+            {
+                RequestShutdown();
+                _thread.Join(2000);
+                throw new InvalidOperationException(
+                    "SystemEventWindow initialization failed.",
+                    _initError);
+            }
+        }
+
+        private void ThreadMain()
+        {
+            try
+            {
+                EnsureClassRegistered();
+
+                _hwnd = CreateWindowEx(
+                    WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
+                    WindowClassName,
+                    "BlueShiftSystemEvent",
+                    WS_POPUP,
+                    0, 0, 1, 1,
+                    IntPtr.Zero,
+                    IntPtr.Zero,
+                    _hInstance,
+                    IntPtr.Zero);
+
+                if (_hwnd == IntPtr.Zero)
+                    throw new InvalidOperationException($"CreateWindowEx failed: {Marshal.GetLastWin32Error()}");
+
+                _selfHandle = GCHandle.Alloc(this);
+                SetWindowLongPtr(_hwnd, GWLP_USERDATA, GCHandle.ToIntPtr(_selfHandle));
+
+                if (!WTSRegisterSessionNotification(_hwnd, NOTIFY_FOR_THIS_SESSION))
+                    throw new InvalidOperationException(
+                        $"WTSRegisterSessionNotification failed: {Marshal.GetLastWin32Error()}");
+
+                Guid displayGuid = ConsoleDisplayStateGuid;
+                _displayStateNotification = RegisterPowerSettingNotification(
+                    _hwnd,
+                    ref displayGuid,
+                    DEVICE_NOTIFY_WINDOW_HANDLE);
+                if (_displayStateNotification == IntPtr.Zero)
+                    throw new InvalidOperationException(
+                        $"RegisterPowerSettingNotification(CONSOLE_DISPLAY_STATE) failed: {Marshal.GetLastWin32Error()}");
+
+                Guid monitorGuid = MonitorPowerOnGuid;
+                _monitorPowerNotification = RegisterPowerSettingNotification(
+                    _hwnd,
+                    ref monitorGuid,
+                    DEVICE_NOTIFY_WINDOW_HANDLE);
+                if (_monitorPowerNotification == IntPtr.Zero)
+                {
+                    Debug.WriteLine(
+                        $"RegisterPowerSettingNotification(MONITOR_POWER_ON) failed: {Marshal.GetLastWin32Error()}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _initError = ex;
+                CleanupNativeResources();
+                _ready.Set();
+                return;
+            }
+
+            _ready.Set();
+
+            while (GetMessageW(out MSG msg, IntPtr.Zero, 0, 0) > 0)
+            {
+                TranslateMessage(ref msg);
+                DispatchMessageW(ref msg);
+            }
+
+            CleanupNativeResources();
         }
 
         private static void EnsureClassRegistered()
@@ -107,10 +185,95 @@ namespace App1
                 ? GCHandle.FromIntPtr(userData).Target as SystemEventWindow
                 : null;
 
+            if (msg == WM_CLOSE && target != null)
+            {
+                target.UnregisterNotificationsOnly();
+                DestroyWindow(hWnd);
+                return IntPtr.Zero;
+            }
+
+            if (msg == WM_DESTROY)
+            {
+                PostQuitMessage(0);
+                return IntPtr.Zero;
+            }
+
             if (target != null && ShouldNotifyDisplayStateChanged(msg, wParam, lParam))
-                target.SystemDisplayStateChanged?.Invoke();
+                target.RequestCoalescedNotify();
 
             return DefWindowProcW(hWnd, msg, wParam, lParam);
+        }
+
+        private void UnregisterNotificationsOnly()
+        {
+            if (_monitorPowerNotification != IntPtr.Zero)
+            {
+                UnregisterPowerSettingNotification(_monitorPowerNotification);
+                _monitorPowerNotification = IntPtr.Zero;
+            }
+
+            if (_displayStateNotification != IntPtr.Zero)
+            {
+                UnregisterPowerSettingNotification(_displayStateNotification);
+                _displayStateNotification = IntPtr.Zero;
+            }
+
+            if (_hwnd != IntPtr.Zero)
+                WTSUnRegisterSessionNotification(_hwnd);
+        }
+
+        private void RequestCoalescedNotify()
+        {
+            bool fireNow = false;
+            bool scheduleTrailing = false;
+
+            lock (_notifyGate)
+            {
+                if (!_coalesceWindowOpen)
+                {
+                    _coalesceWindowOpen = true;
+                    fireNow = true;
+                    scheduleTrailing = true;
+                }
+                else
+                {
+                    _coalesceTrailingPending = true;
+                }
+            }
+
+            if (fireNow)
+                RaiseSystemDisplayStateChanged();
+
+            if (scheduleTrailing)
+            {
+                Task.Delay(CoalesceMs).ContinueWith(
+                    _ =>
+                    {
+                        bool fireTrailing;
+                        lock (_notifyGate)
+                        {
+                            fireTrailing = _coalesceTrailingPending;
+                            _coalesceTrailingPending = false;
+                            _coalesceWindowOpen = false;
+                        }
+
+                        if (fireTrailing)
+                            RaiseSystemDisplayStateChanged();
+                    },
+                    TaskScheduler.Default);
+            }
+        }
+
+        private void RaiseSystemDisplayStateChanged()
+        {
+            try
+            {
+                SystemDisplayStateChanged?.Invoke();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"SystemDisplayStateChanged handler failed: {ex.Message}");
+            }
         }
 
         private static bool ShouldNotifyDisplayStateChanged(uint msg, IntPtr wParam, IntPtr lParam)
@@ -139,7 +302,11 @@ namespace App1
                 return false;
 
             var setting = Marshal.PtrToStructure<POWERBROADCAST_SETTING>(lParam);
-            if (setting.PowerSetting != ConsoleDisplayStateGuid || setting.DataLength < 1)
+            if (setting.DataLength < 1)
+                return false;
+
+            if (setting.PowerSetting != ConsoleDisplayStateGuid
+                && setting.PowerSetting != MonitorPowerOnGuid)
                 return false;
 
             int offset = Marshal.OffsetOf<POWERBROADCAST_SETTING>(nameof(POWERBROADCAST_SETTING.Data)).ToInt32();
@@ -155,8 +322,21 @@ namespace App1
                 or WTS_SESSION_UNLOCK;
         }
 
-        public void Dispose()
+        private void RequestShutdown()
         {
+            IntPtr hwnd = _hwnd;
+            if (hwnd != IntPtr.Zero)
+                PostMessageW(hwnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+        }
+
+        private void CleanupNativeResources()
+        {
+            if (_monitorPowerNotification != IntPtr.Zero)
+            {
+                UnregisterPowerSettingNotification(_monitorPowerNotification);
+                _monitorPowerNotification = IntPtr.Zero;
+            }
+
             if (_displayStateNotification != IntPtr.Zero)
             {
                 UnregisterPowerSettingNotification(_displayStateNotification);
@@ -166,12 +346,27 @@ namespace App1
             if (_hwnd != IntPtr.Zero)
             {
                 WTSUnRegisterSessionNotification(_hwnd);
-                DestroyWindow(_hwnd);
+                // DestroyWindow はメッセージループスレッド上で既に行われている場合がある
+                if (IsWindow(_hwnd))
+                    DestroyWindow(_hwnd);
                 _hwnd = IntPtr.Zero;
             }
 
             if (_selfHandle.IsAllocated)
                 _selfHandle.Free();
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+            _disposed = true;
+
+            RequestShutdown();
+            if (_thread.IsAlive)
+                _thread.Join(5000);
+
+            _ready.Dispose();
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 4)]
@@ -197,6 +392,18 @@ namespace App1
             public string lpszClassName;
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MSG
+        {
+            public IntPtr hwnd;
+            public uint message;
+            public IntPtr wParam;
+            public IntPtr lParam;
+            public uint time;
+            public int ptX;
+            public int ptY;
+        }
+
         private delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
         private const int NOTIFY_FOR_THIS_SESSION = 0;
@@ -219,8 +426,26 @@ namespace App1
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool DestroyWindow(IntPtr hWnd);
 
+        [DllImport("user32.dll")]
+        private static extern bool IsWindow(IntPtr hWnd);
+
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         private static extern IntPtr DefWindowProcW(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern int GetMessageW(out MSG lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax);
+
+        [DllImport("user32.dll")]
+        private static extern bool TranslateMessage(ref MSG lpMsg);
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern IntPtr DispatchMessageW(ref MSG lpMsg);
+
+        [DllImport("user32.dll")]
+        private static extern void PostQuitMessage(int nExitCode);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool PostMessageW(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
         private static extern IntPtr GetModuleHandle(IntPtr lpModuleName);
