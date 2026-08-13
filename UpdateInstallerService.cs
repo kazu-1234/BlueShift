@@ -45,7 +45,7 @@ namespace App1
 
             // インストーラが上書きできるようアプリを終了
             if (Application.Current is App)
-                App.Runtime.ExitApplication();
+                App.Runtime.ExitApplication("update-install");
             else
                 Application.Current.Exit();
 

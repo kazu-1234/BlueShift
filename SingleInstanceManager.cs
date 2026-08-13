@@ -33,6 +33,8 @@ namespace App1
 
         private static string SignalFilePath => Path.Combine(AppDataDirectory, ".show_signal");
 
+        private static string ExitSignalFilePath => Path.Combine(AppDataDirectory, ".exit_signal");
+
         /// <param name="requestInteractiveShow">
         /// true のとき、既存インスタンスへ「ユーザー操作で GUI を開く」ことを通知する。
         /// --background の二重起動では false（通知しない）。
@@ -182,9 +184,18 @@ namespace App1
             }
         }
 
-        /// <summary>既存インスタンスへ終了を依頼（インストーラ用）。</summary>
+        /// <summary>既存インスタンスへ終了を依頼（インストーラ用）。ファイルが本体、イベントは起床用。</summary>
         public static void SignalExit()
         {
+            try
+            {
+                Directory.CreateDirectory(AppDataDirectory);
+                File.WriteAllText(ExitSignalFilePath, DateTime.UtcNow.ToString("O"));
+            }
+            catch
+            {
+            }
+
             try
             {
                 using var exitEvent = EventWaitHandle.OpenExisting(ExitEventName);
@@ -198,12 +209,23 @@ namespace App1
         /// <summary>ファイル信号があれば消費して true。</summary>
         public static bool TryConsumeShowSignal()
         {
-            if (!File.Exists(SignalFilePath))
+            return TryConsumeFile(SignalFilePath);
+        }
+
+        /// <summary>終了握手ファイルがあれば消費して true。イベントだけの起床は無視する。</summary>
+        public static bool TryConsumeExitSignal()
+        {
+            return TryConsumeFile(ExitSignalFilePath);
+        }
+
+        private static bool TryConsumeFile(string path)
+        {
+            if (!File.Exists(path))
                 return false;
 
             try
             {
-                File.Delete(SignalFilePath);
+                File.Delete(path);
                 return true;
             }
             catch

@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml;
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -133,12 +134,13 @@ namespace App1
             window.SaveWindowBoundsFromRuntime();
         }
 
-        public void ExitApplication()
+        public void ExitApplication(string reason = "unknown")
         {
             if (_isExitingProcess)
                 return;
 
             _isExitingProcess = true;
+            AppendLifetimeLog(reason);
             _listenerCts?.Cancel();
             _listenerCts?.Dispose();
             _listenerCts = null;
@@ -186,7 +188,7 @@ namespace App1
 
         public void Dispose()
         {
-            ExitApplication();
+            ExitApplication("dispose");
         }
 
         private void MainWindow_Closed(object sender, WindowEventArgs e)
@@ -232,7 +234,7 @@ namespace App1
                 var tray = _trayMessageWindow.TrayIcon;
                 tray.OpenMainWindowRequested += () => ShowOrCreateMainWindow();
                 tray.OpenSettingsRequested += () => ShowOrCreateMainWindow("Settings");
-                tray.ExitRequested += () => GetDispatcherQueue()?.TryEnqueue(ExitApplication);
+                tray.ExitRequested += () => GetDispatcherQueue()?.TryEnqueue(() => ExitApplication("tray-menu"));
                 ApplyTrayIconVisibility();
                 _trayInitialized = true;
             }
@@ -292,9 +294,16 @@ namespace App1
             };
             _gammaWatchdogTimer.Tick += (_, _) =>
             {
-                EnsureSystemEventMonitor();
-                EnsureGammaApplied();
-                SyncWatchdogIntervals();
+                try
+                {
+                    EnsureResidentLifetime();
+                    EnsureGammaApplied();
+                    SyncWatchdogIntervals();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Gamma watchdog failed: {ex.Message}");
+                }
             };
 
             // 起動時も unconditional Force 窓を開き、T+0 Force + 遅延 Force と Threading ウォッチドッグで吸収する。
@@ -309,11 +318,18 @@ namespace App1
             StartThreadingWatchdog();
         }
 
-        /// <summary>復帰監視窓。失敗時はフラグを戻し、ウォッチドッグから再試行可能にする（SPM 同型）。</summary>
+        /// <summary>復帰監視窓。HWND が死んでいたら作り直す。</summary>
         private void EnsureSystemEventMonitor()
         {
             if (_systemEventInitialized)
-                return;
+            {
+                if (_systemEventWindow is { IsAlive: true })
+                    return;
+
+                _systemEventWindow?.Dispose();
+                _systemEventWindow = null;
+                _systemEventInitialized = false;
+            }
 
             try
             {
@@ -328,6 +344,34 @@ namespace App1
                 _systemEventWindow = null;
                 _systemEventInitialized = false;
             }
+        }
+
+        /// <summary>トレイ HWND が死んでいたら作り直し、生きていればアイコンを付け直す。</summary>
+        private void EnsureTrayAlive(bool reAddIcon = false)
+        {
+            if (_isExitingProcess || !ShouldUseTray())
+                return;
+
+            if (_trayInitialized && _trayMessageWindow is { IsAlive: true })
+            {
+                if (reAddIcon && !_settings.HideTrayIcon)
+                {
+                    try { _trayMessageWindow.TrayIcon.ReAdd(); }
+                    catch (Exception ex) { Debug.WriteLine($"Tray ReAdd failed: {ex.Message}"); }
+                }
+                return;
+            }
+
+            _trayMessageWindow?.Dispose();
+            _trayMessageWindow = null;
+            _trayInitialized = false;
+            EnsureTray();
+        }
+
+        private void EnsureResidentLifetime()
+        {
+            EnsureSystemEventMonitor();
+            EnsureTrayAlive(reAddIcon: true);
         }
 
         /// <summary>専用スレッドからの復帰通知。Dispatcher 不通時は GDI を直接 Force する。</summary>
@@ -354,7 +398,7 @@ namespace App1
 
             if (exitEvent != null)
             {
-                Task.Run(() => ListenLoop(exitEvent, token, () => GetDispatcherQueue()?.TryEnqueue(ExitApplication)), token);
+                Task.Run(() => ListenLoop(exitEvent, token, () => GetDispatcherQueue()?.TryEnqueue(() => ExitApplication("exit-signal"))), token);
             }
         }
 
@@ -389,8 +433,7 @@ namespace App1
             {
                 try
                 {
-                    if (!handle.WaitOne(500))
-                        continue;
+                    handle.WaitOne(500);
                 }
                 catch (ObjectDisposedException)
                 {
@@ -400,7 +443,8 @@ namespace App1
                 if (token.IsCancellationRequested)
                     break;
 
-                action();
+                if (SingleInstanceManager.TryConsumeExitSignal())
+                    action();
             }
         }
 
@@ -435,16 +479,25 @@ namespace App1
             if (_isExitingProcess || !_gammaInitialized)
                 return;
 
-            // プレビュー中にスリープすると復帰スキップになるため、復帰時はプレビューを解除する
-            _gammaPreviewActive = false;
+            try
+            {
+                EnsureResidentLifetime();
 
-            // ドライバが GetDeviceGammaRamp を嘘で返す間は IsLikelyApplied を信用しない
-            BeginUnconditionalReapplyPeriod();
+                // プレビュー中にスリープすると復帰スキップになるため、復帰時はプレビューを解除する
+                _gammaPreviewActive = false;
 
-            // スリープ復帰後は DispatcherTimer が止まることがあるため、再適用前に明示的に再始動する
-            RestartGammaTimers();
-            ApplyCurrentGamma(forceReapply: true);
-            ScheduleDelayedGammaReapplies();
+                // ドライバが GetDeviceGammaRamp を嘘で返す間は IsLikelyApplied を信用しない
+                BeginUnconditionalReapplyPeriod();
+
+                // スリープ復帰後は DispatcherTimer が止まることがあるため、再適用前に明示的に再始動する
+                RestartGammaTimers();
+                ApplyCurrentGamma(forceReapply: true);
+                ScheduleDelayedGammaReapplies();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"RequestGammaReapply failed: {ex.Message}");
+            }
         }
 
         /// <summary>Dispatcher 不通時のフォールバック。GDI Force + 遅延列し、可能なら後でタイマー再始動を enqueue。</summary>
@@ -479,6 +532,7 @@ namespace App1
                             if (_isExitingProcess || !_gammaInitialized)
                                 return;
                             RestartGammaTimers();
+                            EnsureResidentLifetime();
                         }) == true)
                     {
                         return;
@@ -490,14 +544,21 @@ namespace App1
         /// <summary>UI 更新なしで期待ガンマを ForceApply（任意スレッド可）。</summary>
         private void ForceApplyExpectedGammaDirect()
         {
-            if (!TryGetExpectedGammaSettings(out var expected))
+            try
             {
-                if (!_settings.IsFilterEnabled || !_patterns.Any())
-                    _gammaTransition.ForceApply(GammaSettings.Off);
-                return;
-            }
+                if (!TryGetExpectedGammaSettings(out var expected))
+                {
+                    if (!_settings.IsFilterEnabled || !_patterns.Any())
+                        _gammaTransition.ForceApply(GammaSettings.Off);
+                    return;
+                }
 
-            _gammaTransition.ForceApply(expected);
+                _gammaTransition.ForceApply(expected);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"ForceApplyExpectedGammaDirect failed: {ex.Message}");
+            }
         }
 
         private void BeginUnconditionalReapplyPeriod()
@@ -532,7 +593,7 @@ namespace App1
                             {
                                 if (_isExitingProcess || !_gammaInitialized)
                                     return;
-                                EnsureSystemEventMonitor();
+                                EnsureResidentLifetime();
                                 EnsureGammaApplied();
                                 SyncWatchdogIntervals();
                             }) ?? false))
@@ -652,6 +713,18 @@ namespace App1
 
         private void ApplyCurrentGamma(bool forceReapply = false)
         {
+            try
+            {
+                ApplyCurrentGammaCore(forceReapply);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"ApplyCurrentGamma failed: {ex.Message}");
+            }
+        }
+
+        private void ApplyCurrentGammaCore(bool forceReapply)
+        {
             if (_gammaPreviewActive)
                 return;
 
@@ -713,5 +786,22 @@ namespace App1
 
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        internal static void AppendLifetimeLog(string reason)
+        {
+            try
+            {
+                string dir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "BlueShift");
+                Directory.CreateDirectory(dir);
+                File.AppendAllText(
+                    Path.Combine(dir, "lifetime.log"),
+                    $"{DateTime.UtcNow:O} {reason}{Environment.NewLine}");
+            }
+            catch
+            {
+            }
+        }
     }
 }

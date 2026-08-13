@@ -1,4 +1,4 @@
-// v1.1.2
+// v1.1.3
 
 using Microsoft.UI.Xaml;
 using System;
@@ -26,6 +26,8 @@ namespace App1
         {
             Debug.WriteLine(e.Exception);
             ReportStartupError(e.Exception?.Message ?? "Unknown error");
+            AppRuntime.AppendLifetimeLog($"unhandled {e.Exception?.GetType().Name}: {e.Exception?.Message}");
+            e.Handled = true;
         }
 
         internal static void ReportStartupError(string message)

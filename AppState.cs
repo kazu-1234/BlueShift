@@ -93,20 +93,27 @@ namespace App1
             GammaSettings? appliedSettings,
             Pattern? activePattern)
         {
-            StatusMessage = message;
-            StatusSeverity = severity;
-            CurrentIntensityText = appliedSettings.HasValue
-                ? $"{appliedSettings.Value.Intensity}%"
-                : Strings.Get("NotAvailable");
-            CurrentColorTemperatureText = appliedSettings.HasValue
-                ? $"{appliedSettings.Value.ColorTemperatureKelvin}K"
-                : Strings.Get("NotAvailable");
-            ActiveScheduleText = activePattern?.TimeRangeDisplay ?? Strings.Get("NotAvailable");
+            try
+            {
+                StatusMessage = message;
+                StatusSeverity = severity;
+                CurrentIntensityText = appliedSettings.HasValue
+                    ? $"{appliedSettings.Value.Intensity}%"
+                    : Strings.Get("NotAvailable");
+                CurrentColorTemperatureText = appliedSettings.HasValue
+                    ? $"{appliedSettings.Value.ColorTemperatureKelvin}K"
+                    : Strings.Get("NotAvailable");
+                ActiveScheduleText = activePattern?.TimeRangeDisplay ?? Strings.Get("NotAvailable");
 
-            var delay = ScheduleHelper.GetDelayUntilNextTransition(Patterns, DateTime.Now);
-            NextTransitionText = delay.HasValue
-                ? FormatDelay(delay.Value)
-                : Strings.Get("NotAvailable");
+                var delay = ScheduleHelper.GetDelayUntilNextTransition(Patterns, DateTime.Now);
+                NextTransitionText = delay.HasValue
+                    ? FormatDelay(delay.Value)
+                    : Strings.Get("NotAvailable");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"UpdateRuntimeStatus failed: {ex.Message}");
+            }
         }
 
         public void NotifyPatternsChanged()

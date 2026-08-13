@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
-$version = "1.1.2"
+$version = "1.1.3"
 $publishDir = Join-Path $root "dist\folder"
 $iss = Join-Path $root "installer\BlueShift.iss"
 $outDir = Join-Path $root "dist\installer"

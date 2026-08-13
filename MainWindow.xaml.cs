@@ -153,7 +153,7 @@ namespace App1
         {
             Closed -= MainWindow_ClosedDebugExit;
             if (!_runtime.IsExitingProcess)
-                _runtime.ExitApplication();
+                _runtime.ExitApplication("debug-window-close");
         }
 
         private void NavView_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
