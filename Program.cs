@@ -37,7 +37,7 @@ namespace App1
             if (HasArg(args, "--sync-autostart"))
             {
                 var settings = Settings.Load();
-                StartupManager.SyncAutostartWithSettings(settings.AutoStart);
+                StartupManager.SyncAutostartWithSettings(settings.AutoStart, settings.UseLogonTask);
                 return;
             }
 

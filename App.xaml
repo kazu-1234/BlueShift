@@ -80,6 +80,15 @@
                 <Setter Property="Padding" Value="16,8" />
                 <Setter Property="HorizontalAlignment" Value="Left" />
             </Style>
+
+            <!-- テーマ ComboBox: 右端位置は維持。文字左右余白は Padding、幅は CompactComboBoxHelper -->
+            <Style x:Key="CompactComboBoxThemeStyle" TargetType="ComboBox" BasedOn="{StaticResource DefaultComboBoxStyle}">
+                <Setter Property="Padding" Value="12,2,0,2" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -143,16 +143,16 @@
     <value>Theme</value>
   </data>
   <data name="Settings_ThemeDesc.Text" xml:space="preserve">
-    <value>Choose the app display theme (default: follow system)</value>
+    <value>System / Light / Dark</value>
   </data>
   <data name="Settings_Theme_System" xml:space="preserve">
-    <value>Match system</value>
+    <value>Follow system settings</value>
   </data>
   <data name="Settings_Theme_Light" xml:space="preserve">
-    <value>Light</value>
+    <value>Always light</value>
   </data>
   <data name="Settings_Theme_Dark" xml:space="preserve">
-    <value>Dark</value>
+    <value>Always dark</value>
   </data>
   <data name="Settings_SectionStartup.Text" xml:space="preserve">
     <value>Startup</value>
@@ -162,6 +162,30 @@
   </data>
   <data name="Settings_AutoStartDesc.Text" xml:space="preserve">
     <value>Starts BlueShift in the tray when you sign in (Task Scheduler logon task)</value>
+  </data>
+  <data name="Settings_AutoStartExpander.Header" xml:space="preserve">
+    <value>Run BlueShift when Windows starts</value>
+  </data>
+  <data name="Settings_AutostartTaskOnly.Content" xml:space="preserve">
+    <value>Run as a logon task instead of registering for Startup</value>
+  </data>
+  <data name="Settings_RefreshAutostart.Content" xml:space="preserve">
+    <value>Refresh automatic startup info</value>
+  </data>
+  <data name="Settings_AutostartType_Format" xml:space="preserve">
+    <value>Type: {0}</value>
+  </data>
+  <data name="Settings_AutostartPath_Format" xml:space="preserve">
+    <value>Path: {0}</value>
+  </data>
+  <data name="Settings_AutostartMode_TaskShort" xml:space="preserve">
+    <value>Task</value>
+  </data>
+  <data name="Settings_AutostartMode_StartupShort" xml:space="preserve">
+    <value>Startup</value>
+  </data>
+  <data name="Settings_Autostart_NotRegistered" xml:space="preserve">
+    <value>Not registered</value>
   </data>
   <data name="Settings_AutostartMode_Label.Text" xml:space="preserve">
     <value>Registration method</value>
@@ -183,6 +207,33 @@
   </data>
   <data name="Info_UpdateDesc.Text" xml:space="preserve">
     <value>Check for the latest version from GitHub Releases</value>
+  </data>
+  <data name="Info_LastUpdateCheck_Format" xml:space="preserve">
+    <value>Last checked: {0}</value>
+  </data>
+  <data name="Info_LastUpdateCheck_Never" xml:space="preserve">
+    <value>Last checked: Never</value>
+  </data>
+  <data name="Info_LastUpdateCheck_DateFormat" xml:space="preserve">
+    <value>yyyy/MM/dd HH:mm:ss</value>
+  </data>
+  <data name="Info_AutoUpdateLabel.Text" xml:space="preserve">
+    <value>Automatically check for updates</value>
+  </data>
+  <data name="Info_AutoUpdateDesc.Text" xml:space="preserve">
+    <value>Check for updates at startup and install after confirmation when a new version is available</value>
+  </data>
+  <data name="Update_StartupDialogTitle" xml:space="preserve">
+    <value>Update available</value>
+  </data>
+  <data name="Update_StartupDialogContent" xml:space="preserve">
+    <value>{0}&#x0a;&#x0a;Update now?</value>
+  </data>
+  <data name="Update_StartupDialogInstall" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="Update_StartupDialogLater" xml:space="preserve">
+    <value>No</value>
   </data>
   <data name="Info_CheckUpdate.Content" xml:space="preserve">
     <value>Check for updates</value>

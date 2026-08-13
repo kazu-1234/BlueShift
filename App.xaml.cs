@@ -1,4 +1,4 @@
-// v1.0.55
+// v1.1.2
 
 using Microsoft.UI.Xaml;
 using System;
@@ -45,11 +45,7 @@ namespace App1
                 return;
             }
 
-            StartupManager.MigrateFromLegacyIfNeeded();
-
             var settings = Settings.Load();
-            StartupManager.SyncAutostartWithSettings(settings.AutoStart);
-
             bool launchInBackground = HasCommandLineArg("--background");
             bool requestInteractiveShow = !launchInBackground;
 
@@ -58,6 +54,9 @@ namespace App1
                 Exit();
                 return;
             }
+
+            StartupManager.MigrateFromLegacyIfNeeded();
+            StartupManager.SyncAutostartWithSettings(settings.AutoStart, settings.UseLogonTask);
 
             try
             {

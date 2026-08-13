@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -23,6 +24,7 @@ namespace App1
         private static Mutex? _mutex;
         private static EventWaitHandle? _interactiveShowEvent;
         private static EventWaitHandle? _exitEvent;
+        private static bool _ownsMutex;
 
         private static string AppDataDirectory =>
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BlueShift");
@@ -40,10 +42,23 @@ namespace App1
             _mutex = new Mutex(true, MutexName, out bool createdNew);
             if (!createdNew)
             {
-                if (requestInteractiveShow)
-                    SignalInteractiveShow();
+                if (TryTakeOverAbandonedOrDeadPrimary())
+                {
+                    createdNew = true;
+                }
+                else
+                {
+                    if (requestInteractiveShow)
+                        SignalInteractiveShow();
 
-                return false;
+                    _mutex.Dispose();
+                    _mutex = null;
+                    return false;
+                }
+            }
+            else
+            {
+                _ownsMutex = true;
             }
 
             _interactiveShowEvent = new EventWaitHandle(
@@ -57,6 +72,82 @@ namespace App1
 
             TryWritePidFile();
             return true;
+        }
+
+        /// <summary>
+        /// 放棄 Mutex、または PID ファイルのプロセスが死んでいる場合に primary を奪取する。
+        /// </summary>
+        private static bool TryTakeOverAbandonedOrDeadPrimary()
+        {
+            if (_mutex == null)
+                return false;
+
+            // 生きている primary があれば奪取しない
+            if (IsPrimaryProcessAlive())
+                return false;
+
+            try
+            {
+                if (_mutex.WaitOne(0))
+                {
+                    _ownsMutex = true;
+                    return true;
+                }
+            }
+            catch (AbandonedMutexException)
+            {
+                // 前オーナーが異常終了 → こちらが所有権を得た
+                _ownsMutex = true;
+                return true;
+            }
+
+            // WaitOne(0) 失敗でも PID が死んでいれば短時間待って Abandoned を拾う
+            try
+            {
+                if (_mutex.WaitOne(TimeSpan.FromMilliseconds(200)))
+                {
+                    _ownsMutex = true;
+                    return true;
+                }
+            }
+            catch (AbandonedMutexException)
+            {
+                _ownsMutex = true;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsPrimaryProcessAlive()
+        {
+            try
+            {
+                if (!File.Exists(PidFilePath))
+                    return false;
+
+                if (!int.TryParse(File.ReadAllText(PidFilePath).Trim(), out int pid))
+                    return false;
+
+                if (pid == Environment.ProcessId)
+                    return false;
+
+                using Process process = Process.GetProcessById(pid);
+                return !process.HasExited;
+            }
+            catch (ArgumentException)
+            {
+                // プロセスが存在しない
+                return false;
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
+            catch
+            {
+                return true;
+            }
         }
 
         public static EventWaitHandle? InteractiveShowEvent => _interactiveShowEvent;
@@ -132,7 +223,11 @@ namespace App1
 
             if (_mutex != null)
             {
-                try { _mutex.ReleaseMutex(); } catch { }
+                if (_ownsMutex)
+                {
+                    try { _mutex.ReleaseMutex(); } catch { }
+                    _ownsMutex = false;
+                }
                 _mutex.Dispose();
                 _mutex = null;
             }

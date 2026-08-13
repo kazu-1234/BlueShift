@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using System;
 using Windows.System;
+using WinUiShared;
 
 namespace App1.Views
 {
@@ -11,10 +12,12 @@ namespace App1.Views
     {
         private AppState? _state;
         private UpdateCheckResult? _lastResult;
+        private bool _isInitializing;
 
         public InfoPage()
         {
             InitializeComponent();
+            ToggleSwitchClickHelper.BindCardClick(AutoUpdateToggleCard, AutoUpdateToggle);
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -23,11 +26,15 @@ namespace App1.Views
             _state = e.Parameter as AppState;
             if (_state == null) return;
 
+            _isInitializing = true;
             VersionText.Text = Strings.Format("Version_Format", UpdateChecker.CurrentVersion);
+            RefreshLastUpdateCheckText();
+            AutoUpdateToggle.IsOn = _state.Settings.AutoCheckUpdateOnStartup;
 
             _state.PropertyChanged -= State_PropertyChanged;
             _state.PropertyChanged += State_PropertyChanged;
             RefreshDisplay();
+            _isInitializing = false;
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
@@ -40,6 +47,12 @@ namespace App1.Views
         private void State_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             RefreshDisplay();
+        }
+
+        private void RefreshLastUpdateCheckText()
+        {
+            LastUpdateCheckText.Text = UpdateFlowService.FormatLastUpdateCheckDisplay(
+                _state?.Settings.LastUpdateCheckUtc);
         }
 
         private void RefreshDisplay()
@@ -61,47 +74,54 @@ namespace App1.Views
 
         private async void CheckUpdateButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_state == null)
+                return;
+
             CheckUpdateButton.IsEnabled = false;
             UpdateInfoBar.IsOpen = false;
             InstallUpdateCard.Visibility = Visibility.Collapsed;
             _lastResult = null;
 
-            var result = await UpdateChecker.CheckForUpdateAsync();
+            UpdateCheckResult result = await UpdateFlowService.CheckAndRecordAsync(_state.Settings);
             _lastResult = result;
-            UpdateInfoBar.Message = result.Message;
-            UpdateInfoBar.IsOpen = true;
-            UpdateInfoBar.Severity = result.Status switch
-            {
-                UpdateCheckStatus.UpdateAvailable => InfoBarSeverity.Informational,
-                UpdateCheckStatus.Error => InfoBarSeverity.Error,
-                _ => InfoBarSeverity.Success
-            };
+            RefreshLastUpdateCheckText();
+
+            InfoUpdateUi.ApplyManualCheckResult(
+                result,
+                UpdateInfoBar,
+                InstallUpdateCard,
+                InstallStatusText,
+                InstallUpdateButton,
+                (key, args) => Strings.Format(key, args));
 
             CheckUpdateButton.IsEnabled = true;
 
-            if (result.Status == UpdateCheckStatus.UpdateAvailable)
+            if (result.Status == UpdateCheckStatus.UpdateAvailable
+                && (string.IsNullOrWhiteSpace(result.DownloadUrl) || string.IsNullOrWhiteSpace(result.AssetFileName))
+                && !string.IsNullOrWhiteSpace(result.ReleasePageUrl))
             {
-                if (!string.IsNullOrWhiteSpace(result.DownloadUrl) && !string.IsNullOrWhiteSpace(result.AssetFileName))
+                var dialog = new ContentDialog
                 {
-                    InstallUpdateCard.Visibility = Visibility.Visible;
-                    InstallStatusText.Text = Strings.Format("Update_DownloadReady", result.LatestVersion ?? string.Empty);
-                }
-                else if (!string.IsNullOrWhiteSpace(result.ReleasePageUrl))
-                {
-                    var dialog = new ContentDialog
-                    {
-                        Title = Strings.Get("Update_AvailableTitle"),
-                        Content = result.Message,
-                        PrimaryButtonText = Strings.Get("Update_OpenRelease"),
-                        CloseButtonText = Strings.Get("Common_Cancel"),
-                        DefaultButton = ContentDialogButton.Primary,
-                        XamlRoot = XamlRoot
-                    };
+                    Title = Strings.Get("Update_AvailableTitle"),
+                    Content = result.Message,
+                    PrimaryButtonText = Strings.Get("Update_OpenRelease"),
+                    CloseButtonText = Strings.Get("Common_Cancel"),
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = XamlRoot
+                };
 
-                    if (await dialog.ShowAsync() == ContentDialogResult.Primary)
-                        await Launcher.LaunchUriAsync(new Uri(result.ReleasePageUrl));
-                }
+                if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+                    await Launcher.LaunchUriAsync(new Uri(result.ReleasePageUrl));
             }
+        }
+
+        private void AutoUpdateToggle_Toggled(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializing || _state == null)
+                return;
+
+            _state.Settings.AutoCheckUpdateOnStartup = AutoUpdateToggle.IsOn;
+            _state.Settings.Save();
         }
 
         private async void InstallUpdateButton_Click(object sender, RoutedEventArgs e)

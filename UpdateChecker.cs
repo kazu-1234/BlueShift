@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
+using WinUiShared;
 
 namespace App1
 {
@@ -143,23 +144,5 @@ namespace App1
 
             return 0;
         }
-    }
-
-    public enum UpdateCheckStatus
-    {
-        NotConfigured,
-        UpToDate,
-        UpdateAvailable,
-        Error
-    }
-
-    public class UpdateCheckResult
-    {
-        public UpdateCheckStatus Status { get; set; }
-        public string Message { get; set; } = string.Empty;
-        public string? LatestVersion { get; set; }
-        public string? ReleasePageUrl { get; set; }
-        public string? DownloadUrl { get; set; }
-        public string? AssetFileName { get; set; }
     }
 }

@@ -14,7 +14,7 @@
 
                 <TextBlock x:Uid="Time_SectionToggle" Style="{StaticResource SettingsSectionHeaderFirstStyle}" />
 
-                <controls:SettingsCard>
+                <controls:SettingsCard x:Name="FilterToggleCard">
                     <controls:SettingsCard.Header>
                         <StackPanel Spacing="4" MinWidth="0">
                             <TextBlock x:Uid="Time_EnableFilter" Style="{StaticResource CardHeaderTextStyle}" />

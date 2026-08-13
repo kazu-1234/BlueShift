@@ -21,74 +21,58 @@
                         </StackPanel>
                     </controls:SettingsCard.Header>
                     <ComboBox x:Name="ThemeComboBox"
-                              MinWidth="180"
+                              Style="{StaticResource CompactComboBoxThemeStyle}"
                               SelectionChanged="ThemeComboBox_SelectionChanged" />
                 </controls:SettingsCard>
 
                 <TextBlock x:Uid="Settings_SectionStartup" Style="{StaticResource SettingsSectionHeaderStyle}" />
 
-                <controls:SettingsCard>
-                    <controls:SettingsCard.Header>
-                        <StackPanel Spacing="4" MinWidth="0">
-                            <TextBlock x:Uid="Settings_AutoStart" Style="{StaticResource CardHeaderTextStyle}" />
-                            <TextBlock x:Uid="Settings_AutoStartDesc" Style="{StaticResource CardDescriptionTextStyle}" />
-                        </StackPanel>
-                    </controls:SettingsCard.Header>
+                <controls:SettingsExpander x:Name="AutoStartExpander"
+                                           x:Uid="Settings_AutoStartExpander"
+                                           IsExpanded="True">
+                    <controls:SettingsExpander.Resources>
+                        <Thickness x:Key="SettingsExpanderItemPadding">16,8,16,8</Thickness>
+                        <Thickness x:Key="ClickableSettingsExpanderItemPadding">16,8,16,8</Thickness>
+                    </controls:SettingsExpander.Resources>
                     <ToggleSwitch x:Name="AutoStartToggle" Toggled="AutoStartToggle_Toggled" />
-                </controls:SettingsCard>
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard>
+                            <controls:SettingsCard.Header>
+                                <CheckBox x:Name="AutostartTaskOnlyCheckBox"
+                                          x:Uid="Settings_AutostartTaskOnly"
+                                          VerticalAlignment="Center"
+                                          IsChecked="True"
+                                          Checked="AutostartTaskOnlyCheckBox_Changed"
+                                          Unchecked="AutostartTaskOnlyCheckBox_Changed" />
+                            </controls:SettingsCard.Header>
+                        </controls:SettingsCard>
 
-                <controls:SettingsCard>
-                    <controls:SettingsCard.Description>
-                        <Grid ColumnSpacing="10" RowSpacing="8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" MinWidth="0" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
+                        <controls:SettingsCard>
+                            <controls:SettingsCard.Header>
+                                <StackPanel Spacing="4" MinWidth="0">
+                                    <TextBlock x:Name="AutostartTypeLine" FontSize="13" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="AutostartPathLine"
+                                               FontSize="13"
+                                               TextWrapping="Wrap"
+                                               IsTextSelectionEnabled="True" />
+                                </StackPanel>
+                            </controls:SettingsCard.Header>
+                            <Button x:Name="RefreshAutostartButton"
+                                    x:Uid="Settings_RefreshAutostart"
+                                    Click="RefreshAutostartButton_Click" />
+                        </controls:SettingsCard>
 
-                            <TextBlock x:Uid="Settings_AutostartMode_Label"
-                                       Grid.Row="0"
-                                       Grid.Column="0"
-                                       FontSize="13"
-                                       Opacity="0.8"
-                                       VerticalAlignment="Center" />
-                            <TextBlock x:Name="AutostartModeText"
-                                       Grid.Row="0"
-                                       Grid.Column="1"
-                                       FontSize="13"
-                                       FontWeight="SemiBold"
-                                       TextWrapping="Wrap" />
-
-                            <TextBlock x:Uid="Settings_AutostartPath_Label"
-                                       Grid.Row="1"
-                                       Grid.Column="0"
-                                       FontSize="13"
-                                       Opacity="0.8"
-                                       VerticalAlignment="Top" />
-                            <TextBlock x:Name="AutostartPathText"
-                                       Grid.Row="1"
-                                       Grid.Column="1"
-                                       FontSize="13"
-                                       TextWrapping="Wrap"
-                                       IsTextSelectionEnabled="True" />
-                        </Grid>
-                    </controls:SettingsCard.Description>
-                </controls:SettingsCard>
-
-                <controls:SettingsCard>
-                    <controls:SettingsCard.Header>
-                        <StackPanel Spacing="4" MinWidth="0" Orientation="Horizontal">
-                            <CheckBox x:Name="HideTrayIconCheckBox"
-                                      x:Uid="Settings_HideTrayIcon"
-                                      VerticalAlignment="Center"
-                                      Checked="HideTrayIconCheckBox_Changed"
-                                      Unchecked="HideTrayIconCheckBox_Changed" />
-                        </StackPanel>
-                    </controls:SettingsCard.Header>
-                </controls:SettingsCard>
+                        <controls:SettingsCard>
+                            <controls:SettingsCard.Header>
+                                <CheckBox x:Name="HideTrayIconCheckBox"
+                                          x:Uid="Settings_HideTrayIcon"
+                                          VerticalAlignment="Center"
+                                          Checked="HideTrayIconCheckBox_Changed"
+                                          Unchecked="HideTrayIconCheckBox_Changed" />
+                            </controls:SettingsCard.Header>
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
             </StackPanel>
         </Grid>
     </views:PageScrollHost>

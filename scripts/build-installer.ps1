@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
-$version = "1.0.55"
+$version = "1.1.2"
 $publishDir = Join-Path $root "dist\folder"
 $iss = Join-Path $root "installer\BlueShift.iss"
 $outDir = Join-Path $root "dist\installer"
@@ -34,7 +34,6 @@ dotnet publish (Join-Path $root "BlueShift.csproj") `
     -p:Platform=x64 `
     -r win-x64 `
     --self-contained true `
-    -p:WindowsAppSDKSelfContained=true `
     -p:PublishSingleFile=false `
     -o $publishDir
 

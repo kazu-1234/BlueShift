@@ -2,6 +2,7 @@ using App1;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
+using WinUiShared;
 
 namespace App1.Views
 {
@@ -13,8 +14,11 @@ namespace App1.Views
         public SettingsPage()
         {
             InitializeComponent();
+            CompactComboBoxHelper.AttachFitToSelectedText(ThemeComboBox);
             AutoStartToggle.OnContent = Strings.Get("Toggle_On");
             AutoStartToggle.OffContent = Strings.Get("Toggle_Off");
+            ToggleSwitchClickHelper.ProtectFromParentCapture(AutoStartToggle);
+            AutostartExpandHelper.AttachSkipInitialAnimation(AutoStartExpander);
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -37,8 +41,10 @@ namespace App1.Views
             };
 
             AutoStartToggle.IsOn = _state.Settings.AutoStart;
+            AutostartTaskOnlyCheckBox.IsChecked = _state.Settings.UseLogonTask;
             HideTrayIconCheckBox.IsChecked = _state.Settings.HideTrayIcon;
-            UpdateAutoStartDetails();
+            AutoStartExpander.IsExpanded = true;
+            RefreshAutostartInfo();
             _isInitializing = false;
         }
 
@@ -57,9 +63,38 @@ namespace App1.Views
             if (preference == _state.Settings.ThemePreference)
                 return;
 
-            ThemeService.SetPreference(preference);
+            ThemeService.SetPreference(preference, save: false);
             _state.Settings.ThemePreference = preference;
             _state.Settings.Save();
+        }
+
+        private void RefreshAutostartInfo()
+        {
+            bool enabled = _state?.Settings.AutoStart ?? false;
+            bool useLogonTask = _state?.Settings.UseLogonTask ?? true;
+
+            AutostartTypeLine.Text = AutostartInfoFormatter.FormatTypeLine(
+                enabled,
+                useLogonTask,
+                Strings.Get,
+                (key, args) => Strings.Format(key, args));
+
+            AutostartPathLine.Text = AutostartInfoFormatter.FormatPathLine(
+                enabled,
+                StartupManager.GetRegisteredCommand(preferLogonTask: useLogonTask),
+                Strings.Get,
+                (key, args) => Strings.Format(key, args));
+        }
+
+        private void RefreshAutostartButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_state == null)
+                return;
+
+            if (_state.Settings.AutoStart)
+                StartupManager.SyncAutostartWithSettings(true, _state.Settings.UseLogonTask);
+
+            RefreshAutostartInfo();
         }
 
         private void AutoStartToggle_Toggled(object sender, RoutedEventArgs e)
@@ -67,7 +102,8 @@ namespace App1.Views
             if (_isInitializing || _state == null) return;
 
             bool requested = AutoStartToggle.IsOn;
-            if (!StartupManager.SyncAutostartWithSettings(requested) && requested)
+            bool useLogonTask = _state.Settings.UseLogonTask;
+            if (!StartupManager.SyncAutostartWithSettings(requested, useLogonTask) && requested)
             {
                 _isInitializing = true;
                 AutoStartToggle.IsOn = false;
@@ -77,7 +113,35 @@ namespace App1.Views
 
             _state.Settings.AutoStart = requested;
             _state.Settings.Save();
-            UpdateAutoStartDetails();
+            RefreshAutostartInfo();
+        }
+
+        private void AutostartTaskOnlyCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializing || _state == null)
+                return;
+
+            bool useLogonTask = AutostartTaskOnlyCheckBox.IsChecked == true;
+            if (useLogonTask == _state.Settings.UseLogonTask)
+                return;
+
+            _state.Settings.UseLogonTask = useLogonTask;
+
+            if (_state.Settings.AutoStart)
+            {
+                bool ok = StartupManager.SyncAutostartWithSettings(true, useLogonTask);
+                if (!ok)
+                {
+                    _isInitializing = true;
+                    _state.Settings.UseLogonTask = !useLogonTask;
+                    AutostartTaskOnlyCheckBox.IsChecked = !useLogonTask;
+                    _isInitializing = false;
+                    return;
+                }
+            }
+
+            _state.Settings.Save();
+            RefreshAutostartInfo();
         }
 
         private void HideTrayIconCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -92,26 +156,6 @@ namespace App1.Views
             _state.Settings.HideTrayIcon = hide;
             _state.Settings.Save();
             _state.ApplyTrayIconVisibility?.Invoke();
-        }
-
-        private void UpdateAutoStartDetails()
-        {
-            if (_state == null)
-                return;
-
-            if (!_state.Settings.AutoStart)
-            {
-                AutostartModeText.Text = Strings.Get("Settings_AutostartMode_Disabled");
-                AutostartPathText.Text = Strings.Get("NotAvailable");
-                return;
-            }
-
-            AutostartModeText.Text = Strings.Get("Settings_AutostartMode_Task");
-
-            string? command = StartupManager.GetRegisteredCommand();
-            AutostartPathText.Text = string.IsNullOrWhiteSpace(command)
-                ? Strings.Get("NotAvailable")
-                : command.Replace("\"", string.Empty);
         }
     }
 }

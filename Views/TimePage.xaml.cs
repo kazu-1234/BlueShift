@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Windows.UI.Core;
+using WinUiShared;
 
 namespace App1.Views
 {
@@ -35,6 +36,7 @@ namespace App1.Views
             _pointerCaptureLostHandler = Slider_PointerCaptureLost;
 
             InitializeComponent();
+            ToggleSwitchClickHelper.BindCardClick(FilterToggleCard, FilterToggle);
             AttachSliderInteractions(NewIntensitySlider, SliderAdjustmentKind.Intensity);
             AttachSliderInteractions(NewColorTemperatureSlider, SliderAdjustmentKind.ColorTemperature);
             PatternsList.ContainerContentChanging += PatternsList_ContainerContentChanging;
@@ -63,10 +65,11 @@ namespace App1.Views
 
             UpdateEmptyState();
             UpdateStatusFromState();
+            // トグル操作を握りつぶさないよう、IsOn 代入直後に初期化フラグを下ろす。
+            _isInitializing = false;
 
             DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
             {
-                _isInitializing = false;
                 _state?.RefreshGamma?.Invoke();
             });
         }

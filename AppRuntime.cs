@@ -45,6 +45,7 @@ namespace App1
         private bool _gammaPreviewActive;
         private bool _trayInitialized;
         private bool _isExitingProcess;
+        private bool _startupUpdateCheckScheduled;
         /// <summary>起動・スリープ復帰後など、IsLikelyApplied を信用せず Force する期限（UTC）。</summary>
         private DateTime _unconditionalReapplyUntil = DateTime.MinValue;
 
@@ -70,16 +71,19 @@ namespace App1
             RegisterGammaResetOnExit();
             StartListeners();
 
+            // コア（ガンマ／復帰監視）をトレイより先に初期化（SPM 同型・ログオン直後の未適用を防ぐ）
+            EnsureGamma();
+
             if (!ShouldUseTray())
             {
-                EnsureGamma();
                 if (requestInteractiveShow || !launchInBackground)
                     ShowOrCreateMainWindow();
                 return;
             }
 
             EnsureTray();
-            EnsureGamma();
+            if (!_trayInitialized)
+                ScheduleTrayRetries();
 
             if (requestInteractiveShow || !launchInBackground)
                 ShowOrCreateMainWindow();
@@ -109,6 +113,16 @@ namespace App1
             _mainWindow = new MainWindow(this);
             _mainWindow.Closed += MainWindow_Closed;
             _mainWindow.PrepareAndActivate(pageTag);
+            ScheduleStartupUpdateCheckIfNeeded();
+        }
+
+        private void ScheduleStartupUpdateCheckIfNeeded()
+        {
+            if (_startupUpdateCheckScheduled || _mainWindow == null)
+                return;
+
+            _startupUpdateCheckScheduled = true;
+            _ = UpdateFlowService.TryStartupCheckAsync(_mainWindow, _settings);
         }
 
         public void OnMainWindowClosing(MainWindow window)
@@ -212,7 +226,6 @@ namespace App1
             if (_trayInitialized)
                 return;
 
-            _trayInitialized = true;
             try
             {
                 _trayMessageWindow = new TrayMessageWindow();
@@ -221,12 +234,44 @@ namespace App1
                 tray.OpenSettingsRequested += () => ShowOrCreateMainWindow("Settings");
                 tray.ExitRequested += () => GetDispatcherQueue()?.TryEnqueue(ExitApplication);
                 ApplyTrayIconVisibility();
+                _trayInitialized = true;
             }
             catch
             {
                 _trayMessageWindow?.Dispose();
                 _trayMessageWindow = null;
                 _trayInitialized = false;
+            }
+        }
+
+        /// <summary>ログオン直後などシェル未準備でトレイ初期化が失敗した場合の遅延再試行。</summary>
+        private void ScheduleTrayRetries()
+        {
+            int[] delaysMs = { 2000, 5000, 15000 };
+            foreach (int delayMs in delaysMs)
+            {
+                int captured = delayMs;
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await Task.Delay(captured).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        return;
+                    }
+
+                    if (_isExitingProcess || _trayInitialized)
+                        return;
+
+                    GetDispatcherQueue()?.TryEnqueue(() =>
+                    {
+                        if (_isExitingProcess || _trayInitialized)
+                            return;
+                        EnsureTray();
+                    });
+                });
             }
         }
 
@@ -387,8 +432,11 @@ namespace App1
 
         private void RequestGammaReapply()
         {
-            if (_isExitingProcess || !_gammaInitialized || _gammaPreviewActive)
+            if (_isExitingProcess || !_gammaInitialized)
                 return;
+
+            // プレビュー中にスリープすると復帰スキップになるため、復帰時はプレビューを解除する
+            _gammaPreviewActive = false;
 
             // ドライバが GetDeviceGammaRamp を嘘で返す間は IsLikelyApplied を信用しない
             BeginUnconditionalReapplyPeriod();
@@ -399,16 +447,44 @@ namespace App1
             ScheduleDelayedGammaReapplies();
         }
 
-        /// <summary>Dispatcher 不通時のフォールバック。タイマー再始動は諦め、GDI Force + 遅延列のみ行う。</summary>
+        /// <summary>Dispatcher 不通時のフォールバック。GDI Force + 遅延列し、可能なら後でタイマー再始動を enqueue。</summary>
         private void RequestGammaReapplyFallbackDirect()
         {
-            if (_isExitingProcess || !_gammaInitialized || _gammaPreviewActive)
+            if (_isExitingProcess || !_gammaInitialized)
                 return;
+
+            _gammaPreviewActive = false;
 
             BeginUnconditionalReapplyPeriod();
             ForceApplyExpectedGammaDirect();
             ScheduleDelayedGammaReapplies();
             StartThreadingWatchdog();
+
+            // Dispatcher が復帰したらタイマーも起こす
+            _ = Task.Run(async () =>
+            {
+                for (int i = 0; i < 10 && !_isExitingProcess; i++)
+                {
+                    try
+                    {
+                        await Task.Delay(500).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        return;
+                    }
+
+                    if (GetDispatcherQueue()?.TryEnqueue(() =>
+                        {
+                            if (_isExitingProcess || !_gammaInitialized)
+                                return;
+                            RestartGammaTimers();
+                        }) == true)
+                    {
+                        return;
+                    }
+                }
+            });
         }
 
         /// <summary>UI 更新なしで期待ガンマを ForceApply（任意スレッド可）。</summary>

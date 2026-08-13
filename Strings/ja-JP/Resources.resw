@@ -143,16 +143,16 @@
     <value>テーマ</value>
   </data>
   <data name="Settings_ThemeDesc.Text" xml:space="preserve">
-    <value>アプリの表示テーマを選択します（デフォルト: システム連動）</value>
+    <value>システム連動 / ライト / ダーク</value>
   </data>
   <data name="Settings_Theme_System" xml:space="preserve">
-    <value>システムに合わせる</value>
+    <value>システムの設定に従う</value>
   </data>
   <data name="Settings_Theme_Light" xml:space="preserve">
-    <value>ライト</value>
+    <value>常にライト</value>
   </data>
   <data name="Settings_Theme_Dark" xml:space="preserve">
-    <value>ダーク</value>
+    <value>常にダーク</value>
   </data>
   <data name="Settings_SectionStartup.Text" xml:space="preserve">
     <value>起動</value>
@@ -162,6 +162,30 @@
   </data>
   <data name="Settings_AutoStartDesc.Text" xml:space="preserve">
     <value>Windows ログオン時にタスクトレイ常駐で起動します（タスクスケジューラ方式）</value>
+  </data>
+  <data name="Settings_AutoStartExpander.Header" xml:space="preserve">
+    <value>Windows の開始時に BlueShift を実行</value>
+  </data>
+  <data name="Settings_AutostartTaskOnly.Content" xml:space="preserve">
+    <value>スタートアップには登録せずログイン時のタスクとして実行</value>
+  </data>
+  <data name="Settings_RefreshAutostart.Content" xml:space="preserve">
+    <value>自動起動の情報を更新</value>
+  </data>
+  <data name="Settings_AutostartType_Format" xml:space="preserve">
+    <value>種類: {0}</value>
+  </data>
+  <data name="Settings_AutostartPath_Format" xml:space="preserve">
+    <value>パス: {0}</value>
+  </data>
+  <data name="Settings_AutostartMode_TaskShort" xml:space="preserve">
+    <value>タスク</value>
+  </data>
+  <data name="Settings_AutostartMode_StartupShort" xml:space="preserve">
+    <value>スタートアップ</value>
+  </data>
+  <data name="Settings_Autostart_NotRegistered" xml:space="preserve">
+    <value>未登録</value>
   </data>
   <data name="Settings_AutostartMode_Label.Text" xml:space="preserve">
     <value>登録方式</value>
@@ -183,6 +207,33 @@
   </data>
   <data name="Info_UpdateDesc.Text" xml:space="preserve">
     <value>GitHub リリースから最新版を確認します</value>
+  </data>
+  <data name="Info_LastUpdateCheck_Format" xml:space="preserve">
+    <value>最終確認日時 {0}</value>
+  </data>
+  <data name="Info_LastUpdateCheck_Never" xml:space="preserve">
+    <value>最終確認日時: 未確認</value>
+  </data>
+  <data name="Info_LastUpdateCheck_DateFormat" xml:space="preserve">
+    <value>yyyy/MM/dd ddd HH:mm:ss</value>
+  </data>
+  <data name="Info_AutoUpdateLabel.Text" xml:space="preserve">
+    <value>自動で最新版を確認</value>
+  </data>
+  <data name="Info_AutoUpdateDesc.Text" xml:space="preserve">
+    <value>起動時に更新を確認し、新しいバージョンがあれば確認後にインストールします</value>
+  </data>
+  <data name="Update_StartupDialogTitle" xml:space="preserve">
+    <value>更新あり</value>
+  </data>
+  <data name="Update_StartupDialogContent" xml:space="preserve">
+    <value>{0}&#x0a;&#x0a;今すぐ更新しますか？</value>
+  </data>
+  <data name="Update_StartupDialogInstall" xml:space="preserve">
+    <value>はい</value>
+  </data>
+  <data name="Update_StartupDialogLater" xml:space="preserve">
+    <value>いいえ</value>
   </data>
   <data name="Info_CheckUpdate.Content" xml:space="preserve">
     <value>更新を確認</value>

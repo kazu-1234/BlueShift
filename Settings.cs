@@ -2,10 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
+using WinUiShared;
 
 namespace App1
 {
-    public class Settings
+    public class Settings : IUpdateSettings
     {
         /// <summary>デフォルトはシステム連動。</summary>
         public AppThemePreference ThemePreference { get; set; } = AppThemePreference.System;
@@ -15,9 +16,8 @@ namespace App1
         /// <summary>true のときタスクトレイアイコンを表示しない。</summary>
         public bool HideTrayIcon { get; set; }
 
-        /// <summary>旧設定互換（ログオンタスク専用化後は未使用）。</summary>
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public bool? UseLogonTask { get; set; }
+        /// <summary>true のときログオンタスク、false のときレジストリ Run（スタートアップ）。</summary>
+        public bool UseLogonTask { get; set; } = true;
 
         public bool IsFilterEnabled { get; set; } = true;
         public List<Pattern> Patterns { get; set; } = new List<Pattern>();
@@ -33,6 +33,12 @@ namespace App1
 
         /// <summary>前回終了時に最大化されていたか。</summary>
         public bool WindowMaximized { get; set; }
+
+        /// <summary>起動時（初回 MainWindow 表示時）に更新を自動確認する。</summary>
+        public bool AutoCheckUpdateOnStartup { get; set; } = true;
+
+        /// <summary>最後に更新確認した UTC 時刻。未確認は null。</summary>
+        public DateTime? LastUpdateCheckUtc { get; set; }
 
         private static string SettingsFilePath =>
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BlueShift", "settings.json");
