@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using WinRT.Interop;
+using WinUiShared;
 
 namespace App1
 {
@@ -25,30 +26,19 @@ namespace App1
         private readonly AppState _appState;
         private readonly GammaTransitionService _gammaTransition = new();
         private readonly DispatcherTimer _gammaScheduleTimer = new();
-        private readonly DispatcherTimer _gammaWatchdogTimer = new() { Interval = TimeSpan.FromSeconds(30) };
-
-        /// <summary>開始時点からの絶対遅延（累積 Delay にしない）。SPM と同型。</summary>
-        private static readonly int[] GammaReapplyDelaysMs =
-            { 800, 2000, 5000, 15000, 30000, 60000, 90000 };
-
-        private const int UnconditionalReapplySeconds = 120;
-        private const int WatchdogNormalIntervalMs = 30000;
-        private const int WatchdogUnconditionalIntervalMs = 2500;
 
         private MainWindow? _mainWindow;
         private TrayMessageWindow? _trayMessageWindow;
         private SystemEventWindow? _systemEventWindow;
-        private Timer? _gammaThreadingWatchdog;
+        private ResumeReapplyCoordinator? _resumeCoordinator;
         private CancellationTokenSource? _listenerCts;
-        private CancellationTokenSource? _gammaReapplyCts;
         private bool _gammaInitialized;
         private bool _systemEventInitialized;
         private bool _gammaPreviewActive;
         private bool _trayInitialized;
         private bool _isExitingProcess;
         private bool _startupUpdateCheckScheduled;
-        /// <summary>起動・スリープ復帰後など、IsLikelyApplied を信用せず Force する期限（UTC）。</summary>
-        private DateTime _unconditionalReapplyUntil = DateTime.MinValue;
+        private bool _startupReadyNotified;
 
         public AppRuntime(Application app)
         {
@@ -79,6 +69,7 @@ namespace App1
             {
                 if (requestInteractiveShow || !launchInBackground)
                     ShowOrCreateMainWindow();
+                ScheduleStartupReadyNotification();
                 return;
             }
 
@@ -88,6 +79,8 @@ namespace App1
 
             if (requestInteractiveShow || !launchInBackground)
                 ShowOrCreateMainWindow();
+
+            ScheduleStartupReadyNotification();
         }
 
         public void ShowOrCreateMainWindow(string? pageTag = null)
@@ -144,15 +137,10 @@ namespace App1
             _listenerCts?.Cancel();
             _listenerCts?.Dispose();
             _listenerCts = null;
-            _gammaReapplyCts?.Cancel();
-            _gammaReapplyCts?.Dispose();
-            _gammaReapplyCts = null;
-
-            _gammaThreadingWatchdog?.Dispose();
-            _gammaThreadingWatchdog = null;
+            _resumeCoordinator?.Dispose();
+            _resumeCoordinator = null;
 
             _gammaScheduleTimer.Stop();
-            _gammaWatchdogTimer.Stop();
             _gammaTransition.Stop();
             _systemEventWindow?.Dispose();
             _systemEventWindow = null;
@@ -223,6 +211,66 @@ namespace App1
             return true;
         }
 
+        /// <summary>コア初期化後にトレイバルーンで常駐準備完了を知らせる（VS 外での動作確認用）。</summary>
+        private void ScheduleStartupReadyNotification()
+        {
+            if (_startupReadyNotified)
+                return;
+            _startupReadyNotified = true;
+
+            _ = Task.Run(async () =>
+            {
+                int[] delaysMs = { 1500, 2500, 5000 };
+                var start = DateTime.UtcNow;
+                foreach (int delayMs in delaysMs)
+                {
+                    try
+                    {
+                        var wait = start.AddMilliseconds(delayMs) - DateTime.UtcNow;
+                        if (wait > TimeSpan.Zero)
+                            await Task.Delay(wait).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        return;
+                    }
+
+                    if (_isExitingProcess)
+                        return;
+
+                    var shown = new TaskCompletionSource<bool>();
+                    if (!(GetDispatcherQueue()?.TryEnqueue(() =>
+                        {
+                            try
+                            {
+                                if (_isExitingProcess || _settings.HideTrayIcon
+                                    || !_trayInitialized || _trayMessageWindow == null)
+                                {
+                                    shown.TrySetResult(false);
+                                    return;
+                                }
+
+                                _trayMessageWindow.TrayIcon.ShowBalloon(
+                                    Strings.Get("Tray_StartupReadyTitle"),
+                                    Strings.Get("Tray_StartupReadyBody"));
+                                shown.TrySetResult(true);
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.WriteLine($"Startup ready balloon failed: {ex.Message}");
+                                shown.TrySetResult(false);
+                            }
+                        }) ?? false))
+                    {
+                        shown.TrySetResult(false);
+                    }
+
+                    if (await shown.Task.ConfigureAwait(false))
+                        return;
+                }
+            });
+        }
+
         private void EnsureTray()
         {
             if (_trayInitialized)
@@ -283,6 +331,7 @@ namespace App1
                 return;
 
             _gammaInitialized = true;
+            EnsureResumeCoordinator();
             EnsureSystemEventMonitor();
 
             _gammaScheduleTimer.Tick += (_, _) =>
@@ -292,30 +341,25 @@ namespace App1
                 ApplyCurrentGamma();
                 ScheduleNextGammaCheck();
             };
-            _gammaWatchdogTimer.Tick += (_, _) =>
-            {
-                try
-                {
-                    EnsureResidentLifetime();
-                    EnsureGammaApplied();
-                    SyncWatchdogIntervals();
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Gamma watchdog failed: {ex.Message}");
-                }
-            };
 
-            // 起動時も unconditional Force 窓を開き、T+0 Force + 遅延 Force と Threading ウォッチドッグで吸収する。
-            BeginUnconditionalReapplyPeriod();
-            SyncWatchdogIntervals();
             _gammaTransition.ResetToOff(applyToDisplay: true);
-            ApplyCurrentGamma(forceReapply: true);
-            ScheduleDelayedGammaReapplies();
+            _resumeCoordinator?.BeginStartupPeriod();
             ScheduleNextGammaCheck();
-            SyncWatchdogIntervals();
-            _gammaWatchdogTimer.Start();
-            StartThreadingWatchdog();
+        }
+
+        private void EnsureResumeCoordinator()
+        {
+            if (_resumeCoordinator != null)
+                return;
+
+            _resumeCoordinator = new ResumeReapplyCoordinator(
+                _uiDispatcher,
+                () => _isExitingProcess,
+                OnResumeApply,
+                OnResumeApplyDirect,
+                OnResumeWatchdog,
+                NeedsGammaForce);
+            _resumeCoordinator.Start();
         }
 
         /// <summary>復帰監視窓。HWND が死んでいたら作り直す。</summary>
@@ -333,8 +377,10 @@ namespace App1
 
             try
             {
-                _systemEventWindow = new SystemEventWindow();
-                _systemEventWindow.SystemDisplayStateChanged += OnSystemDisplayStateChanged;
+                EnsureResumeCoordinator();
+                _systemEventWindow = new SystemEventWindow("BlueShiftSystemEventWindow_v2");
+                _systemEventWindow.SystemDisplayStateChanged += () => _resumeCoordinator?.NotifyResume();
+                _systemEventWindow.SystemSuspending += () => _resumeCoordinator?.NotifySuspend();
                 _systemEventInitialized = true;
             }
             catch (Exception ex)
@@ -372,13 +418,6 @@ namespace App1
         {
             EnsureSystemEventMonitor();
             EnsureTrayAlive(reAddIcon: true);
-        }
-
-        /// <summary>専用スレッドからの復帰通知。Dispatcher 不通時は GDI を直接 Force する。</summary>
-        private void OnSystemDisplayStateChanged()
-        {
-            if (!(GetDispatcherQueue()?.TryEnqueue(RequestGammaReapply) ?? false))
-                RequestGammaReapplyFallbackDirect();
         }
 
         private void StartListeners()
@@ -474,7 +513,7 @@ namespace App1
             }
         }
 
-        private void RequestGammaReapply()
+        private void OnResumeApply()
         {
             if (_isExitingProcess || !_gammaInitialized)
                 return;
@@ -482,63 +521,42 @@ namespace App1
             try
             {
                 EnsureResidentLifetime();
-
-                // プレビュー中にスリープすると復帰スキップになるため、復帰時はプレビューを解除する
                 _gammaPreviewActive = false;
-
-                // ドライバが GetDeviceGammaRamp を嘘で返す間は IsLikelyApplied を信用しない
-                BeginUnconditionalReapplyPeriod();
-
-                // スリープ復帰後は DispatcherTimer が止まることがあるため、再適用前に明示的に再始動する
                 RestartGammaTimers();
                 ApplyCurrentGamma(forceReapply: true);
-                ScheduleDelayedGammaReapplies();
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"RequestGammaReapply failed: {ex.Message}");
+                Debug.WriteLine($"OnResumeApply failed: {ex.Message}");
             }
         }
 
-        /// <summary>Dispatcher 不通時のフォールバック。GDI Force + 遅延列し、可能なら後でタイマー再始動を enqueue。</summary>
-        private void RequestGammaReapplyFallbackDirect()
+        private void OnResumeApplyDirect()
         {
             if (_isExitingProcess || !_gammaInitialized)
                 return;
 
             _gammaPreviewActive = false;
-
-            BeginUnconditionalReapplyPeriod();
             ForceApplyExpectedGammaDirect();
-            ScheduleDelayedGammaReapplies();
-            StartThreadingWatchdog();
+        }
 
-            // Dispatcher が復帰したらタイマーも起こす
-            _ = Task.Run(async () =>
-            {
-                for (int i = 0; i < 10 && !_isExitingProcess; i++)
-                {
-                    try
-                    {
-                        await Task.Delay(500).ConfigureAwait(false);
-                    }
-                    catch
-                    {
-                        return;
-                    }
+        private void OnResumeWatchdog()
+        {
+            if (_isExitingProcess || !_gammaInitialized)
+                return;
 
-                    if (GetDispatcherQueue()?.TryEnqueue(() =>
-                        {
-                            if (_isExitingProcess || !_gammaInitialized)
-                                return;
-                            RestartGammaTimers();
-                            EnsureResidentLifetime();
-                        }) == true)
-                    {
-                        return;
-                    }
-                }
-            });
+            EnsureResidentLifetime();
+            EnsureGammaApplied();
+            RestartGammaTimers();
+        }
+
+        private bool NeedsGammaForce()
+        {
+            if (_isExitingProcess || !_gammaInitialized || _gammaPreviewActive)
+                return false;
+            if (!TryGetExpectedGammaSettings(out var expected))
+                return false;
+            return !GammaController.IsLikelyApplied(expected);
         }
 
         /// <summary>UI 更新なしで期待ガンマを ForceApply（任意スレッド可）。</summary>
@@ -561,69 +579,10 @@ namespace App1
             }
         }
 
-        private void BeginUnconditionalReapplyPeriod()
-        {
-            _unconditionalReapplyUntil = DateTime.UtcNow.AddSeconds(UnconditionalReapplySeconds);
-        }
-
-        /// <summary>スリープ復帰後などにスケジュール／ウォッチドッグ用 DispatcherTimer を起こす。</summary>
+        /// <summary>スリープ復帰後などにスケジュール用 DispatcherTimer を起こす。</summary>
         private void RestartGammaTimers()
         {
-            if (_gammaWatchdogTimer.IsEnabled)
-                _gammaWatchdogTimer.Stop();
-            SyncWatchdogIntervals();
-            _gammaWatchdogTimer.Start();
-            StartThreadingWatchdog();
             ScheduleNextGammaCheck();
-        }
-
-        /// <summary>DispatcherTimer が止まっても Force できる Threading.Timer バックアップ。</summary>
-        private void StartThreadingWatchdog()
-        {
-            int intervalMs = DateTime.UtcNow < _unconditionalReapplyUntil
-                ? WatchdogUnconditionalIntervalMs
-                : WatchdogNormalIntervalMs;
-
-            if (_gammaThreadingWatchdog == null)
-            {
-                _gammaThreadingWatchdog = new Timer(
-                    _ =>
-                    {
-                        if (!(GetDispatcherQueue()?.TryEnqueue(() =>
-                            {
-                                if (_isExitingProcess || !_gammaInitialized)
-                                    return;
-                                EnsureResidentLifetime();
-                                EnsureGammaApplied();
-                                SyncWatchdogIntervals();
-                            }) ?? false))
-                        {
-                            if (!_isExitingProcess && _gammaInitialized && !_gammaPreviewActive
-                                && DateTime.UtcNow < _unconditionalReapplyUntil)
-                                ForceApplyExpectedGammaDirect();
-                        }
-                    },
-                    null,
-                    intervalMs,
-                    intervalMs);
-            }
-            else
-            {
-                _gammaThreadingWatchdog.Change(intervalMs, intervalMs);
-            }
-        }
-
-        private void SyncWatchdogIntervals()
-        {
-            int intervalMs = DateTime.UtcNow < _unconditionalReapplyUntil
-                ? WatchdogUnconditionalIntervalMs
-                : WatchdogNormalIntervalMs;
-            var interval = TimeSpan.FromMilliseconds(intervalMs);
-
-            if (_gammaWatchdogTimer.Interval != interval)
-                _gammaWatchdogTimer.Interval = interval;
-
-            _gammaThreadingWatchdog?.Change(intervalMs, intervalMs);
         }
 
         private void EnsureGammaApplied()
@@ -631,7 +590,7 @@ namespace App1
             if (_isExitingProcess || !_gammaInitialized || _gammaPreviewActive)
                 return;
 
-            if (DateTime.UtcNow < _unconditionalReapplyUntil)
+            if (_resumeCoordinator?.ShouldForceApply == true)
             {
                 ApplyCurrentGamma(forceReapply: true);
                 return;
@@ -659,48 +618,6 @@ namespace App1
 
             settings = GammaSettings.FromPattern(currentPattern);
             return true;
-        }
-
-        /// <param name="baseOffsetMs">起動アニメ完了待ちなど、遅延列全体を後ろへずらす量。</param>
-        private void ScheduleDelayedGammaReapplies(int baseOffsetMs = 0)
-        {
-            _gammaReapplyCts?.Cancel();
-            _gammaReapplyCts?.Dispose();
-            _gammaReapplyCts = new CancellationTokenSource();
-            var token = _gammaReapplyCts.Token;
-
-            Task.Run(async () =>
-            {
-                var start = DateTime.UtcNow;
-                foreach (int delayMs in GammaReapplyDelaysMs)
-                {
-                    try
-                    {
-                        var wait = start.AddMilliseconds(baseOffsetMs + delayMs) - DateTime.UtcNow;
-                        if (wait > TimeSpan.Zero)
-                            await Task.Delay(wait, token).ConfigureAwait(false);
-                    }
-                    catch (TaskCanceledException)
-                    {
-                        break;
-                    }
-
-                    if (token.IsCancellationRequested || _isExitingProcess)
-                        break;
-
-                    if (!(GetDispatcherQueue()?.TryEnqueue(() =>
-                        {
-                            if (_isExitingProcess || !_gammaInitialized || _gammaPreviewActive)
-                                return;
-                            // ForceApply は StopAnimation 済み。スタックしたアニメもここで救出する。
-                            ApplyCurrentGamma(forceReapply: true);
-                        }) ?? false))
-                    {
-                        if (!_isExitingProcess && _gammaInitialized && !_gammaPreviewActive)
-                            ForceApplyExpectedGammaDirect();
-                    }
-                }
-            }, token);
         }
 
         private void ScheduleNextGammaCheck()

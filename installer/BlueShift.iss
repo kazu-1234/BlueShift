@@ -2,7 +2,7 @@
 ; Usage: scripts\build-installer.ps1
 
 #define MyAppName "BlueShift"
-#define MyAppVersion "1.1.3"
+#define MyAppVersion "1.1.4"
 #define MyAppPublisher "kazu-1234"
 #define MyAppURL "https://github.com/kazu-1234/BlueShift"
 #define MyAppExeName "BlueShift.exe"

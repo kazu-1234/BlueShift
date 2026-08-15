@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
 
@@ -15,11 +16,45 @@ namespace App1
         [DllImport("gdi32.dll")]
         private static extern bool GetDeviceGammaRamp(IntPtr hdc, ref RAMP lpRamp);
 
+        [DllImport("gdi32.dll", CharSet = CharSet.Unicode)]
+        private static extern IntPtr CreateDC(string? lpszDriver, string? lpszDevice, string? lpszOutput, IntPtr lpInitData);
+
+        [DllImport("gdi32.dll")]
+        private static extern bool DeleteDC(IntPtr hdc);
+
         [DllImport("user32.dll")]
         private static extern IntPtr GetDC(IntPtr hWnd);
 
         [DllImport("user32.dll")]
         private static extern int ReleaseDC(IntPtr hWnd, IntPtr hdc);
+
+        [DllImport("user32.dll")]
+        private static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lprcClip, MonitorEnumProc lpfnEnum, IntPtr dwData);
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFOEX lpmi);
+
+        private delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, IntPtr lprcMonitor, IntPtr dwData);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int left;
+            public int top;
+            public int right;
+            public int bottom;
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct MONITORINFOEX
+        {
+            public int cbSize;
+            public RECT rcMonitor;
+            public RECT rcWork;
+            public uint dwFlags;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+            public string szDevice;
+        }
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
         public struct RAMP
@@ -81,20 +116,13 @@ namespace App1
 
         private static bool TryGetCurrentRamp(out RAMP ramp)
         {
-            ramp = default;
+            ramp = CreateEmptyRamp();
             IntPtr dc = GetDC(IntPtr.Zero);
             if (dc == IntPtr.Zero)
                 return false;
 
             try
             {
-                ramp = new RAMP
-                {
-                    Red = new ushort[256],
-                    Green = new ushort[256],
-                    Blue = new ushort[256]
-                };
-
                 return GetDeviceGammaRamp(dc, ref ramp);
             }
             finally
@@ -137,14 +165,19 @@ namespace App1
         private static readonly int[] SampleIndices = { 64, 128, 192, 255 };
         private const int RampTolerance = 80;
 
-        private static RAMP CreateIdentityRamp()
+        private static RAMP CreateEmptyRamp()
         {
-            var ramp = new RAMP
+            return new RAMP
             {
                 Red = new ushort[256],
                 Green = new ushort[256],
                 Blue = new ushort[256]
             };
+        }
+
+        private static RAMP CreateIdentityRamp()
+        {
+            var ramp = CreateEmptyRamp();
 
             for (int i = 0; i < 256; i++)
             {
@@ -200,22 +233,82 @@ namespace App1
                 if (delayMs > 0)
                     Thread.Sleep(delayMs);
 
-                IntPtr dc = GetDC(IntPtr.Zero);
-                if (dc == IntPtr.Zero)
-                    continue;
-
-                try
-                {
-                    if (SetDeviceGammaRamp(dc, ref ramp))
-                        return true;
-                }
-                finally
-                {
-                    ReleaseDC(IntPtr.Zero, dc);
-                }
+                if (TryApplyRampToDisplays(ramp))
+                    return true;
             }
 
             return false;
+        }
+
+        private static bool TryApplyRampToDisplays(RAMP ramp)
+        {
+            var devices = new List<string>();
+            MonitorEnumProc proc = (hMonitor, _, _, _) =>
+            {
+                var info = new MONITORINFOEX
+                {
+                    cbSize = Marshal.SizeOf<MONITORINFOEX>()
+                };
+                if (GetMonitorInfo(hMonitor, ref info) && !string.IsNullOrEmpty(info.szDevice))
+                    devices.Add(info.szDevice);
+                return true;
+            };
+
+            EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, proc, IntPtr.Zero);
+            GC.KeepAlive(proc);
+
+            bool anyVerified = false;
+            foreach (string device in devices)
+            {
+                if (TryApplyRampToDevice(device, ramp))
+                    anyVerified = true;
+            }
+
+            IntPtr screenDc = GetDC(IntPtr.Zero);
+            if (screenDc != IntPtr.Zero)
+            {
+                try
+                {
+                    if (TrySetAndVerify(screenDc, ramp))
+                        anyVerified = true;
+                }
+                finally
+                {
+                    ReleaseDC(IntPtr.Zero, screenDc);
+                }
+            }
+
+            return anyVerified;
+        }
+
+        private static bool TryApplyRampToDevice(string device, RAMP ramp)
+        {
+            IntPtr dc = CreateDC(device, device, null, IntPtr.Zero);
+            if (dc == IntPtr.Zero)
+                dc = CreateDC("DISPLAY", device, null, IntPtr.Zero);
+            if (dc == IntPtr.Zero)
+                return false;
+
+            try
+            {
+                return TrySetAndVerify(dc, ramp);
+            }
+            finally
+            {
+                DeleteDC(dc);
+            }
+        }
+
+        private static bool TrySetAndVerify(IntPtr dc, RAMP ramp)
+        {
+            if (!SetDeviceGammaRamp(dc, ref ramp))
+                return false;
+
+            var actual = CreateEmptyRamp();
+            if (!GetDeviceGammaRamp(dc, ref actual))
+                return false;
+
+            return RampsAreSimilar(ramp, actual);
         }
     }
 }

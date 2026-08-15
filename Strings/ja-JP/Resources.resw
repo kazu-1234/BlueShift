@@ -352,6 +352,12 @@
   <data name="Tray_Exit" xml:space="preserve">
     <value>終了</value>
   </data>
+  <data name="Tray_StartupReadyTitle" xml:space="preserve">
+    <value>常駐準備完了</value>
+  </data>
+  <data name="Tray_StartupReadyBody" xml:space="preserve">
+    <value>スリープ復帰の監視を開始しました</value>
+  </data>
   <data name="NotAvailable" xml:space="preserve">
     <value>—</value>
   </data>

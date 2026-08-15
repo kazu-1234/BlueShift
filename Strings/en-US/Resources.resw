@@ -352,6 +352,12 @@
   <data name="Tray_Exit" xml:space="preserve">
     <value>Exit</value>
   </data>
+  <data name="Tray_StartupReadyTitle" xml:space="preserve">
+    <value>Ready</value>
+  </data>
+  <data name="Tray_StartupReadyBody" xml:space="preserve">
+    <value>Resume monitoring has started</value>
+  </data>
   <data name="NotAvailable" xml:space="preserve">
     <value>—</value>
   </data>
