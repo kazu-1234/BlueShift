@@ -71,7 +71,7 @@ namespace App1.Views
 
         private void PatternsList_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            MeasureAndLogCardGaps("PatternsList_SizeChanged");
+            // SizeChanged のたびに測るとログが溢れ、余白補正と干渉しやすいので無視
         }
 
         /// <summary>
@@ -197,12 +197,14 @@ namespace App1.Views
             double delta = rightGap - leftGap;
             if (delta > 0.5)
             {
-                // 右余白過多分だけ負の右 Padding で伸ばす（左は触らない）
-                PatternsList.Padding = new Thickness(0, 0, -delta, 0);
+                double targetRight = -delta;
+                if (Math.Abs(PatternsList.Padding.Right - targetRight) >= 0.5)
+                    PatternsList.Padding = new Thickness(0, 0, targetRight, 0);
             }
             else if (delta < -0.5)
             {
-                PatternsList.Padding = new Thickness(0);
+                if (Math.Abs(PatternsList.Padding.Right) >= 0.5)
+                    PatternsList.Padding = new Thickness(0);
             }
         }
 
@@ -377,13 +379,17 @@ namespace App1.Views
 
         /// <summary>
         /// 横並び時は左パネル高さに合わせ、縦並び時は行の残り高さ内で一覧だけスクロールする。
-        /// Height を明示し、ListView に有限ビューポートを渡す（MaxHeight のみだと見切れてスクロールしないことがある）。
+        /// MaxHeight のみ（Height 固定は左右パネルの測度循環で LayoutCycle→黒画面になる）。
+        /// Padding 分を差し引き、カード内で見切れず ListView がスクロールできるようにする。
         /// </summary>
         private void SyncPatternsListHostHeight()
         {
             if (PatternsListHost == null || ScheduleLeftPanel == null || ScheduleLayoutGrid == null
                 || ScheduleRightPanel == null)
                 return;
+
+            if (PatternsListHost.ReadLocalValue(FrameworkElement.HeightProperty) != DependencyProperty.UnsetValue)
+                PatternsListHost.ClearValue(FrameworkElement.HeightProperty);
 
             bool sideBySide = Grid.GetRow(ScheduleRightPanel) == 0
                 && Grid.GetColumn(ScheduleRightPanel) == 1;
@@ -406,12 +412,14 @@ namespace App1.Views
 
             if (available > 0)
             {
-                PatternsListHost.Height = available;
-                PatternsListHost.MaxHeight = available;
+                if (PatternsListHost.ReadLocalValue(FrameworkElement.MaxHeightProperty) == DependencyProperty.UnsetValue
+                    || Math.Abs(PatternsListHost.MaxHeight - available) >= 0.5)
+                {
+                    PatternsListHost.MaxHeight = available;
+                }
             }
             else
             {
-                PatternsListHost.ClearValue(FrameworkElement.HeightProperty);
                 PatternsListHost.ClearValue(FrameworkElement.MaxHeightProperty);
             }
         }
