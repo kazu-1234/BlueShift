@@ -14,7 +14,7 @@ namespace App1.Views;
 
 /// <summary>
 /// TimePicker フライアウトの時・分選択ハイライトが境目で重なり暗い筋になるのを防ぐ。
-/// 列間隔を広げ、横断ハイライトを1本に揃える（または列ごとに厳密 Clip）。
+/// 列間隔を広げ、横断 HighlightRect を1本にし、列ごとの MonochromaticOverlayPresenter 塗りを消す。
 /// </summary>
 internal static class TimePickerFlyoutFixHelper
 {
@@ -164,8 +164,15 @@ internal static class TimePickerFlyoutFixHelper
             DependencyObject child = VisualTreeHelper.GetChild(root, i);
             if (child is FrameworkElement fe)
             {
-                if (!ReferenceEquals(fe, except) && IsAccentHighlight(fe))
-                    fe.Opacity = 0;
+                if (!ReferenceEquals(fe, except))
+                {
+                    // HighlightRect と同色の Background が列ごとに重なり左端が濃くなるのを防ぐ。
+                    // ReplacementColor による文字差し替えは残すため Opacity は触らない。
+                    if (IsMonochromaticOverlay(fe))
+                        ClearBackground(fe);
+                    else if (IsAccentHighlight(fe))
+                        fe.Opacity = 0;
+                }
 
                 HideNestedAccentHighlights(fe, except);
             }
@@ -176,8 +183,39 @@ internal static class TimePickerFlyoutFixHelper
         }
     }
 
+    private static bool IsMonochromaticOverlay(FrameworkElement fe)
+    {
+        return fe.GetType().Name.Contains("MonochromaticOverlay", StringComparison.Ordinal);
+    }
+
+    private static void ClearBackground(FrameworkElement fe)
+    {
+        Brush transparent = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
+        if (fe is MonochromaticOverlayPresenter overlay)
+        {
+            overlay.Background = transparent;
+            return;
+        }
+
+        switch (fe)
+        {
+            case Control control:
+                control.Background = transparent;
+                break;
+            case Panel panel:
+                panel.Background = transparent;
+                break;
+            case Border border:
+                border.Background = transparent;
+                break;
+        }
+    }
+
     private static bool IsAccentHighlight(FrameworkElement fe)
     {
+        if (IsMonochromaticOverlay(fe))
+            return false;
+
         string name = fe.Name ?? string.Empty;
         string typeName = fe.GetType().Name;
         if (name.Contains("Highlight", StringComparison.OrdinalIgnoreCase)
@@ -190,6 +228,8 @@ internal static class TimePickerFlyoutFixHelper
         {
             Shape shape => shape.Fill,
             Border border => border.Background,
+            Control control => control.Background,
+            Panel panel => panel.Background,
             _ => null
         };
 
