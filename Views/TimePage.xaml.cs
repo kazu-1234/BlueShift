@@ -49,6 +49,8 @@ namespace App1.Views
             ToggleSwitchClickHelper.BindCardClick(FilterToggleCard, FilterToggle);
             AttachSliderInteractions(NewIntensitySlider, SliderAdjustmentKind.Intensity);
             AttachSliderInteractions(NewColorTemperatureSlider, SliderAdjustmentKind.ColorTemperature);
+            NewTimePicker.PointerWheelChanged += TimePicker_PointerWheelChanged;
+            NewEndTimePicker.PointerWheelChanged += TimePicker_PointerWheelChanged;
             PatternsList.ContainerContentChanging += PatternsList_ContainerContentChanging;
             ScheduleLeftPanel.Loaded += (_, _) => ConfigureSchedulePanelChrome(ScheduleLeftPanel);
             ScheduleRightPanel.Loaded += (_, _) =>
@@ -156,6 +158,9 @@ namespace App1.Views
                 Grid.SetColumnSpan(bar, 2);
                 Canvas.SetZIndex(bar, 1);
             }
+
+            sv.VerticalScrollMode = ScrollMode.Enabled;
+            sv.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
 
             // 実測で右だけ空く場合は、予約幅ぶんだけ ListView を右へ伸ばす
             DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => EqualizeCardSideGaps());
@@ -372,30 +377,43 @@ namespace App1.Views
 
         /// <summary>
         /// 横並び時は左パネル高さに合わせ、縦並び時は行の残り高さ内で一覧だけスクロールする。
+        /// Height を明示し、ListView に有限ビューポートを渡す（MaxHeight のみだと見切れてスクロールしないことがある）。
         /// </summary>
         private void SyncPatternsListHostHeight()
         {
-            if (PatternsListHost == null || ScheduleLeftPanel == null || ScheduleLayoutGrid == null)
+            if (PatternsListHost == null || ScheduleLeftPanel == null || ScheduleLayoutGrid == null
+                || ScheduleRightPanel == null)
                 return;
 
             bool sideBySide = Grid.GetRow(ScheduleRightPanel) == 0
                 && Grid.GetColumn(ScheduleRightPanel) == 1;
 
+            double available;
             if (sideBySide)
             {
                 double leftHeight = ScheduleLeftPanel.ActualHeight;
-                if (leftHeight > 0)
-                    PatternsListHost.MaxHeight = leftHeight;
-                else
-                    PatternsListHost.ClearValue(FrameworkElement.MaxHeightProperty);
-                return;
+                available = leftHeight
+                    - ScheduleRightPanel.Padding.Top
+                    - ScheduleRightPanel.Padding.Bottom;
+            }
+            else
+            {
+                double row1Height = ScheduleLayoutGrid.RowDefinitions[1].ActualHeight;
+                available = row1Height
+                    - ScheduleRightPanel.Padding.Top
+                    - ScheduleRightPanel.Padding.Bottom;
             }
 
-            double row1Height = ScheduleLayoutGrid.RowDefinitions[1].ActualHeight;
-            if (row1Height > 0)
-                PatternsListHost.MaxHeight = row1Height;
+            if (available > 0)
+            {
+                PatternsListHost.Height = available;
+                PatternsListHost.MaxHeight = available;
+            }
             else
+            {
+                PatternsListHost.ClearValue(FrameworkElement.HeightProperty);
                 PatternsListHost.ClearValue(FrameworkElement.MaxHeightProperty);
+            }
         }
 
         private void PatternsList_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
@@ -497,11 +515,18 @@ namespace App1.Views
             picker.Tag = new PatternTimePickerTag { PatternId = pattern.Id, IsEnd = isEnd };
             SyncTimePickerFromPattern(picker, pattern, isEnd);
             picker.SelectedTimeChanged += PatternTimePicker_SelectedTimeChanged;
+            picker.PointerWheelChanged += TimePicker_PointerWheelChanged;
         }
 
         private void DetachPatternTimePicker(TimePicker picker)
         {
             picker.SelectedTimeChanged -= PatternTimePicker_SelectedTimeChanged;
+            picker.PointerWheelChanged -= TimePicker_PointerWheelChanged;
+        }
+
+        private static void TimePicker_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
+        {
+            TimePickerWheelHelper.HandlePointerWheelChanged(sender, e);
         }
 
         private void SyncTimePickerFromPattern(TimePicker picker, Pattern pattern, bool isEnd)
