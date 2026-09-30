@@ -69,6 +69,7 @@ namespace App1.Views
             ToggleSwitchClickHelper.BindCardClick(FilterToggleCard, FilterToggle);
             AttachSliderInteractions(NewIntensitySlider, SliderAdjustmentKind.Intensity);
             AttachSliderInteractions(NewColorTemperatureSlider, SliderAdjustmentKind.ColorTemperature);
+            TimePickerFlyoutFixHelper.Attach(NewTimePicker, NewEndTimePicker);
             PatternsList.ContainerContentChanging += PatternsList_ContainerContentChanging;
         }
 

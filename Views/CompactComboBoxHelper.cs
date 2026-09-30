@@ -73,9 +73,11 @@ internal static class CompactComboBoxHelper
 
         if (FindDescendant(box, "ContentPresenter") is FrameworkElement content)
         {
-            double side = box.Padding.Left;
-            content.Margin = new Thickness(side, box.Padding.Top, side, box.Padding.Bottom);
-            content.HorizontalAlignment = HorizontalAlignment.Center;
+            // Padding は ComboBox 側。Margin を足すと左寄りに見えるため解除して中央揃え。
+            content.Margin = new Thickness(0);
+            content.HorizontalAlignment = HorizontalAlignment.Stretch;
+            if (content is ContentPresenter presenter)
+                presenter.HorizontalContentAlignment = HorizontalAlignment.Center;
         }
     }
 

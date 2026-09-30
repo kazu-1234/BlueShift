@@ -69,21 +69,29 @@
                 <Setter Property="MinWidth" Value="0" />
             </Style>
 
-            <!-- 登録カード左列の時・分 ComboBox（矢印なし・ホイール操作） -->
+            <!-- 登録カード左列の時・分 ComboBox（矢印なし・中央揃え・ホイール操作） -->
+            <Style x:Key="PatternTimeComboBoxItemStyle" TargetType="ComboBoxItem" BasedOn="{StaticResource DefaultComboBoxItemStyle}">
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="Padding" Value="4,6" />
+                <Setter Property="FontSize" Value="15" />
+            </Style>
+
             <Style x:Key="PatternTimeComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource DefaultComboBoxStyle}">
                 <Setter Property="MinWidth" Value="0" />
-                <Setter Property="Padding" Value="8,2,8,2" />
-                <Setter Property="FontSize" Value="13" />
+                <Setter Property="Padding" Value="4,4" />
+                <Setter Property="FontSize" Value="15" />
                 <Setter Property="HorizontalAlignment" Value="Stretch" />
                 <Setter Property="VerticalAlignment" Value="Center" />
                 <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="ItemContainerStyle" Value="{StaticResource PatternTimeComboBoxItemStyle}" />
             </Style>
 
             <Style x:Key="DeleteIconButtonStyle" TargetType="Button" BasedOn="{StaticResource SubtleButtonStyle}">
-                <Setter Property="Width" Value="44" />
-                <Setter Property="Height" Value="44" />
+                <Setter Property="Width" Value="40" />
+                <Setter Property="Height" Value="40" />
                 <Setter Property="Padding" Value="0" />
-                <Setter Property="HorizontalAlignment" Value="Center" />
+                <Setter Property="HorizontalAlignment" Value="Right" />
                 <Setter Property="VerticalAlignment" Value="Center" />
             </Style>
 

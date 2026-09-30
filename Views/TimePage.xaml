@@ -186,9 +186,14 @@
                                            Grid.Column="1"
                                            HorizontalAlignment="Stretch"
                                            VerticalAlignment="Stretch"
-                                           MinHeight="0">
+                                           MinHeight="0"
+                                           Padding="12,12,12,12">
+                        <controls:SettingsCard.Resources>
+                            <!-- 一覧枠とカードの左右余白を揃える -->
+                            <Thickness x:Key="SettingsCardPadding">12,12,12,12</Thickness>
+                        </controls:SettingsCard.Resources>
                         <controls:SettingsCard.Description>
-                            <Grid x:Name="PatternsListHost" MinHeight="200">
+                            <Grid x:Name="PatternsListHost" MinHeight="200" Margin="0">
                                 <TextBlock x:Name="EmptyStateText"
                                            x:Uid="Time_EmptyState"
                                            TextWrapping="Wrap"
@@ -204,6 +209,8 @@
                                           Visibility="Collapsed"
                                           VerticalAlignment="Stretch"
                                           HorizontalAlignment="Stretch"
+                                          Padding="0"
+                                          Margin="0"
                                           ScrollViewer.VerticalScrollBarVisibility="Auto"
                                           ScrollViewer.VerticalScrollMode="Enabled"
                                           ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -214,19 +221,19 @@
                                                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                                     BorderThickness="1"
                                                     CornerRadius="6"
-                                                    Padding="12,12,12,12"
+                                                    Padding="12,12,4,12"
                                                     HorizontalAlignment="Stretch">
                                                 <Grid ColumnSpacing="10">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="156" MinWidth="0" />
                                                         <ColumnDefinition Width="*" MinWidth="0" />
-                                                        <ColumnDefinition Width="44" />
+                                                        <ColumnDefinition Width="40" />
                                                     </Grid.ColumnDefinitions>
 
                                                     <StackPanel VerticalAlignment="Center" Spacing="4">
                                                         <TextBlock x:Uid="Time_TimeRange" FontSize="12" Opacity="0.7" />
                                                         <StackPanel Spacing="4">
-                                                            <Grid ColumnSpacing="4">
+                                                            <Grid ColumnSpacing="8">
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="*" />
                                                                     <ColumnDefinition Width="*" />
@@ -241,7 +248,7 @@
                                                                        FontSize="12"
                                                                        Opacity="0.7"
                                                                        HorizontalAlignment="Center" />
-                                                            <Grid ColumnSpacing="4">
+                                                            <Grid ColumnSpacing="8">
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="*" />
                                                                     <ColumnDefinition Width="*" />
@@ -299,6 +306,7 @@
 
                                                     <Button Grid.Column="2"
                                                             Style="{StaticResource DeleteIconButtonStyle}"
+                                                            HorizontalAlignment="Right"
                                                             Tag="{x:Bind Id}"
                                                             Click="DeletePattern_Click"
                                                             x:Uid="Time_Delete">
