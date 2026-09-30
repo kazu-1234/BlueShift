@@ -70,8 +70,8 @@
                 <Setter Property="MinWidth" Value="0" />
             </Style>
 
-            <!-- 登録カード用 TimePicker（左フォームより狭い） -->
-            <Style x:Key="PatternCardTimePickerStyle" TargetType="TimePicker" BasedOn="{StaticResource DefaultTimePickerStyle}">
+            <!-- 登録カード用 TimePicker（左フォームより狭い）。DefaultTimePickerStyle は公開キー無し -->
+            <Style x:Key="PatternCardTimePickerStyle" TargetType="TimePicker">
                 <Setter Property="ClockIdentifier" Value="24HourClock" />
                 <Setter Property="Width" Value="236" />
                 <Setter Property="MinWidth" Value="0" />
