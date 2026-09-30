@@ -1,4 +1,5 @@
 using App1;
+using CommunityToolkit.WinUI.Controls;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -9,6 +10,7 @@ using Microsoft.UI.Xaml.Navigation;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using Windows.UI.Core;
 using WinUiShared;
@@ -69,34 +71,67 @@ namespace App1.Views
             ToggleSwitchClickHelper.BindCardClick(FilterToggleCard, FilterToggle);
             AttachSliderInteractions(NewIntensitySlider, SliderAdjustmentKind.Intensity);
             AttachSliderInteractions(NewColorTemperatureSlider, SliderAdjustmentKind.ColorTemperature);
-            InitializeNewTimeCombos();
+            TimePickerFlyoutFixHelper.Attach(NewTimePicker, NewEndTimePicker);
             PatternsList.ContainerContentChanging += PatternsList_ContainerContentChanging;
-        }
-
-        private void InitializeNewTimeCombos()
-        {
-            PopulateCombo(NewStartHourCombo, HourItems, "00");
-            PopulateCombo(NewStartMinuteCombo, MinuteItems, "00");
-            PopulateCombo(NewEndHourCombo, HourItems, "00");
-            PopulateCombo(NewEndMinuteCombo, MinuteItems, "00");
-            CompactComboBoxHelper.HideDropDownGlyph(NewStartHourCombo);
-            CompactComboBoxHelper.HideDropDownGlyph(NewStartMinuteCombo);
-            CompactComboBoxHelper.HideDropDownGlyph(NewEndHourCombo);
-            CompactComboBoxHelper.HideDropDownGlyph(NewEndMinuteCombo);
-            UpdateNewEndTimeCombosEnabled();
-        }
-
-        private static void PopulateCombo(ComboBox combo, string[] items, string selected)
-        {
-            combo.Items.Clear();
-            foreach (string item in items)
-                combo.Items.Add(item);
-            combo.SelectedItem = selected;
+            ScheduleLeftPanel.Loaded += (_, _) => ConfigureSchedulePanelChrome(ScheduleLeftPanel);
+            ScheduleRightPanel.Loaded += (_, _) =>
+            {
+                ConfigureSchedulePanelChrome(ScheduleRightPanel);
+                ConfigurePatternsListScrollViewer();
+                MeasureAndLogCardGaps("ScheduleRightPanel_Loaded");
+            };
         }
 
         private void PatternsList_Loaded(object sender, RoutedEventArgs e)
         {
+            ConfigureSchedulePanelChrome(ScheduleLeftPanel);
+            ConfigureSchedulePanelChrome(ScheduleRightPanel);
             ConfigurePatternsListScrollViewer();
+            MeasureAndLogCardGaps("PatternsList_Loaded");
+        }
+
+        private void PatternsList_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            MeasureAndLogCardGaps("PatternsList_SizeChanged");
+        }
+
+        /// <summary>
+        /// SettingsCard の HeaderPanel は Margin 右 24 固定。Description 経由だと一覧右だけ大きく空く。
+        /// ContentAlignment=Vertical は Content を Row1 に送るため、空 Header 行に高さを取られる。
+        /// ContentPresenter を RootGrid 全域に広げ、左右余白を Padding のみにする。
+        /// </summary>
+        private void ConfigureSchedulePanelChrome(SettingsCard? card)
+        {
+            if (card == null)
+                return;
+
+            if (FindDescendantByName(card, "HeaderPanel") is FrameworkElement headerPanel)
+            {
+                headerPanel.Margin = new Thickness(0);
+                headerPanel.Visibility = Visibility.Collapsed;
+            }
+
+            if (FindDescendantByName(card, "PART_HeaderIconPresenterHolder") is FrameworkElement iconHolder)
+                iconHolder.Visibility = Visibility.Collapsed;
+
+            if (FindDescendantByName(card, "PART_ActionIconPresenterHolder") is FrameworkElement actionHolder)
+                actionHolder.Visibility = Visibility.Collapsed;
+
+            if (FindDescendantByName(card, "PART_ContentPresenter") is FrameworkElement content)
+            {
+                Grid.SetRow(content, 0);
+                Grid.SetRowSpan(content, 2);
+                Grid.SetColumn(content, 0);
+                Grid.SetColumnSpan(content, 4);
+                content.Margin = new Thickness(0);
+                content.HorizontalAlignment = HorizontalAlignment.Stretch;
+                content.VerticalAlignment = VerticalAlignment.Stretch;
+                if (content is ContentPresenter presenter)
+                {
+                    presenter.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+                    presenter.VerticalContentAlignment = VerticalAlignment.Stretch;
+                }
+            }
         }
 
         /// <summary>
@@ -129,6 +164,13 @@ namespace App1.Views
                 Grid.SetColumnSpan(presenter, 2);
             }
 
+            // ItemsPresenter 既定の左右余白があるとカードが内側に縮む
+            if (FindDescendantByName(PatternsList, "ItemsPresenter") is FrameworkElement itemsPresenter)
+            {
+                itemsPresenter.Margin = new Thickness(0);
+                itemsPresenter.HorizontalAlignment = HorizontalAlignment.Stretch;
+            }
+
             if (FindDescendantByName(sv, "VerticalScrollBar") is FrameworkElement bar)
             {
                 bar.HorizontalAlignment = HorizontalAlignment.Right;
@@ -137,6 +179,137 @@ namespace App1.Views
                 Grid.SetColumnSpan(bar, 2);
                 Canvas.SetZIndex(bar, 1);
             }
+
+            // 実測で右だけ空く場合は、予約幅ぶんだけ ListView を右へ伸ばす
+            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => EqualizeCardSideGaps());
+        }
+
+        private void EqualizeCardSideGaps()
+        {
+            if (PatternsListHost == null || PatternsList == null || PatternsList.Visibility != Visibility.Visible)
+                return;
+
+            ListViewItem? firstItem = null;
+            for (int i = 0; i < PatternsList.Items.Count; i++)
+            {
+                if (PatternsList.ContainerFromIndex(i) is ListViewItem item)
+                {
+                    firstItem = item;
+                    break;
+                }
+            }
+
+            if (firstItem == null)
+                return;
+
+            Border? cardBorder = FindFirstDescendantBorder(firstItem);
+            FrameworkElement measureTarget = cardBorder ?? (FrameworkElement)firstItem;
+
+            var hostTransform = PatternsListHost.TransformToVisual(null);
+            var cardTransform = measureTarget.TransformToVisual(null);
+            var hostBounds = hostTransform.TransformBounds(new Windows.Foundation.Rect(0, 0, PatternsListHost.ActualWidth, PatternsListHost.ActualHeight));
+            var cardBounds = cardTransform.TransformBounds(new Windows.Foundation.Rect(0, 0, measureTarget.ActualWidth, measureTarget.ActualHeight));
+
+            double leftGap = cardBounds.X - hostBounds.X;
+            double rightGap = (hostBounds.X + hostBounds.Width) - (cardBounds.X + cardBounds.Width);
+            double delta = rightGap - leftGap;
+            if (delta > 0.5)
+            {
+                // 右余白過多分だけ負の右 Padding で伸ばす（左は触らない）
+                PatternsList.Padding = new Thickness(0, 0, -delta, 0);
+            }
+            else if (delta < -0.5)
+            {
+                PatternsList.Padding = new Thickness(0);
+            }
+        }
+
+        /// <summary>
+        /// 大枠右端とカード右端の隙間を実測し、左右差をログに残す（検証用）。
+        /// </summary>
+        private void MeasureAndLogCardGaps(string reason)
+        {
+            if (PatternsListHost == null || PatternsList == null || PatternsList.Visibility != Visibility.Visible)
+                return;
+
+            if (VisualTreeHelper.GetChildrenCount(PatternsList) == 0)
+                return;
+
+            ListViewItem? firstItem = null;
+            for (int i = 0; i < PatternsList.Items.Count; i++)
+            {
+                if (PatternsList.ContainerFromIndex(i) is ListViewItem item)
+                {
+                    firstItem = item;
+                    break;
+                }
+            }
+
+            if (firstItem == null)
+                return;
+
+            FrameworkElement cardBorder = firstItem;
+            if (VisualTreeHelper.GetChildrenCount(firstItem) > 0
+                && VisualTreeHelper.GetChild(firstItem, 0) is FrameworkElement inner)
+            {
+                // ListViewItem の ContentPresenter → Border
+                var border = FindFirstDescendantBorder(firstItem);
+                if (border != null)
+                    cardBorder = border;
+            }
+
+            var hostTransform = PatternsListHost.TransformToVisual(null);
+            var cardTransform = cardBorder.TransformToVisual(null);
+            var hostBounds = hostTransform.TransformBounds(new Windows.Foundation.Rect(0, 0, PatternsListHost.ActualWidth, PatternsListHost.ActualHeight));
+            var cardBounds = cardTransform.TransformBounds(new Windows.Foundation.Rect(0, 0, cardBorder.ActualWidth, cardBorder.ActualHeight));
+
+            double leftGap = cardBounds.X - hostBounds.X;
+            double rightGap = (hostBounds.X + hostBounds.Width) - (cardBounds.X + cardBounds.Width);
+
+            double comboHeight = -1;
+            double comboFont = -1;
+            var cardCombos = FindDescendantComboBoxes(firstItem);
+            if (cardCombos.Count > 0)
+            {
+                comboHeight = cardCombos[0].ActualHeight;
+                comboFont = cardCombos[0].FontSize;
+            }
+
+            string line =
+                $"{DateTime.Now:HH:mm:ss.fff} {reason} leftGap={leftGap:F1} rightGap={rightGap:F1} delta={Math.Abs(leftGap - rightGap):F1} " +
+                $"hostW={PatternsListHost.ActualWidth:F1} cardW={cardBorder.ActualWidth:F1} comboH={comboHeight:F1} comboFont={comboFont:F1}";
+
+            try
+            {
+                string path = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "BlueShift",
+                    "layout-measure.txt");
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                File.AppendAllText(path, line + Environment.NewLine);
+            }
+            catch
+            {
+                // 検証ログ失敗は無視
+            }
+
+            System.Diagnostics.Debug.WriteLine(line);
+        }
+
+        private static Border? FindFirstDescendantBorder(DependencyObject root)
+        {
+            int count = VisualTreeHelper.GetChildrenCount(root);
+            for (int i = 0; i < count; i++)
+            {
+                var child = VisualTreeHelper.GetChild(root, i);
+                if (child is Border border)
+                    return border;
+                var nested = FindFirstDescendantBorder(child);
+                if (nested != null)
+                    return nested;
+            }
+
+            return null;
         }
 
         private static ScrollViewer? FindDescendantScrollViewer(DependencyObject root)
@@ -199,8 +372,11 @@ namespace App1.Views
 
             DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
             {
+                ConfigureSchedulePanelChrome(ScheduleLeftPanel);
+                ConfigureSchedulePanelChrome(ScheduleRightPanel);
                 SyncPatternsListHostHeight();
                 ConfigurePatternsListScrollViewer();
+                MeasureAndLogCardGaps("OnNavigatedTo");
                 _state?.RefreshGamma?.Invoke();
             });
         }
@@ -295,6 +471,8 @@ namespace App1.Views
             AttachTimeCombo(combos[1], pattern, TimeComboKind.StartMinute);
             AttachTimeCombo(combos[2], pattern, TimeComboKind.EndHour);
             AttachTimeCombo(combos[3], pattern, TimeComboKind.EndMinute);
+
+            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => MeasureAndLogCardGaps("AfterAttachCombos"));
         }
 
         private static List<Slider> FindDescendantSliders(DependencyObject root)
@@ -650,26 +828,19 @@ namespace App1.Views
 
         private void HasEndTimeCheckBox_Changed(object sender, RoutedEventArgs e)
         {
-            UpdateNewEndTimeCombosEnabled();
-        }
-
-        private void UpdateNewEndTimeCombosEnabled()
-        {
-            bool enabled = HasEndTimeCheckBox.IsChecked == true;
-            NewEndHourCombo.IsEnabled = enabled;
-            NewEndMinuteCombo.IsEnabled = enabled;
+            NewEndTimePicker.IsEnabled = HasEndTimeCheckBox.IsChecked == true;
         }
 
         private void AddPattern_Click(object sender, RoutedEventArgs e)
         {
             if (_state == null) return;
 
-            string timeStr = FormatComboTime(NewStartHourCombo, NewStartMinuteCombo);
+            string timeStr = FormatTime(NewTimePicker.Time);
 
             bool hasEndTime = HasEndTimeCheckBox.IsChecked == true;
             string endTimeStr = "00:00";
             if (hasEndTime)
-                endTimeStr = FormatComboTime(NewEndHourCombo, NewEndMinuteCombo);
+                endTimeStr = FormatTime(NewEndTimePicker.Time);
 
             _state.Patterns.Add(new Pattern
             {
@@ -686,14 +857,11 @@ namespace App1.Views
             _state.NotifyPatternsChanged();
             UpdateEmptyState();
             ConfigurePatternsListScrollViewer();
+            MeasureAndLogCardGaps("AddPattern");
         }
 
-        private static string FormatComboTime(ComboBox hourCombo, ComboBox minuteCombo)
-        {
-            string hour = hourCombo.SelectedItem as string ?? "00";
-            string minute = minuteCombo.SelectedItem as string ?? "00";
-            return $"{hour}:{minute}";
-        }
+        private static string FormatTime(TimeSpan time) =>
+            $"{time.Hours:D2}:{time.Minutes:D2}";
 
         private void DeletePattern_Click(object sender, RoutedEventArgs e)
         {

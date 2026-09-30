@@ -59,9 +59,10 @@
                 <Setter Property="Margin" Value="0,8,0,4" />
             </Style>
 
-            <Style x:Key="PatternListItemContainerStyle" TargetType="ListViewItem">
+            <Style x:Key="PatternListItemContainerStyle" TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                 <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
                 <Setter Property="Padding" Value="0" />
                 <Setter Property="Margin" Value="0,0,0,8" />
                 <!-- 時分コンボ縦積み分を含むカード高さ -->
@@ -79,13 +80,16 @@
 
             <Style x:Key="PatternTimeComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource DefaultComboBoxStyle}">
                 <Setter Property="MinWidth" Value="0" />
+                <!-- テーマ既定の背の高い枠を抑え、文字サイズに合わせる -->
                 <Setter Property="Height" Value="32" />
                 <Setter Property="MinHeight" Value="32" />
-                <Setter Property="Padding" Value="6,4" />
+                <Setter Property="MaxHeight" Value="32" />
+                <Setter Property="Padding" Value="4,2" />
                 <Setter Property="FontSize" Value="13" />
                 <Setter Property="HorizontalAlignment" Value="Stretch" />
                 <Setter Property="VerticalAlignment" Value="Center" />
                 <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
                 <Setter Property="ItemContainerStyle" Value="{StaticResource PatternTimeComboBoxItemStyle}" />
             </Style>
 

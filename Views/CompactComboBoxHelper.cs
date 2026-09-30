@@ -65,11 +65,17 @@ internal static class CompactComboBoxHelper
         if (FindDescendant(box, "DropDownGlyph") is FrameworkElement glyph)
             glyph.Visibility = Visibility.Collapsed;
 
-        if (FindDescendant(box, "LayoutRoot") is Grid { ColumnDefinitions.Count: >= 2 } layoutRoot)
-        {
-            layoutRoot.ColumnDefinitions[0].Width = new GridLength(1, GridUnitType.Star);
-            layoutRoot.ColumnDefinitions[1].Width = new GridLength(0);
-        }
+            if (FindDescendant(box, "LayoutRoot") is Grid { ColumnDefinitions.Count: >= 2 } layoutRoot)
+            {
+                layoutRoot.ColumnDefinitions[0].Width = new GridLength(1, GridUnitType.Star);
+                layoutRoot.ColumnDefinitions[1].Width = new GridLength(0);
+                layoutRoot.MinHeight = 0;
+                if (!double.IsNaN(box.Height) && box.Height > 0)
+                {
+                    layoutRoot.Height = box.Height;
+                    layoutRoot.MaxHeight = box.Height;
+                }
+            }
 
         if (FindDescendant(box, "ContentPresenter") is FrameworkElement content)
         {

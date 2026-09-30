@@ -73,13 +73,15 @@
                         <RowDefinition Height="*" MinHeight="240" />
                     </Grid.RowDefinitions>
 
+                    <!-- Description は HeaderPanel(Margin 右24)内のため、フル幅コンテンツは Content+Vertical を使う -->
                     <controls:SettingsCard x:Name="ScheduleLeftPanel"
                                            Grid.Column="0"
+                                           ContentAlignment="Vertical"
+                                           HorizontalContentAlignment="Stretch"
                                            HorizontalAlignment="Stretch"
                                            VerticalAlignment="Stretch"
                                            SizeChanged="ScheduleLeftPanel_SizeChanged">
-                        <controls:SettingsCard.Description>
-                            <StackPanel Spacing="16">
+                        <StackPanel Spacing="16">
                                 <TextBlock x:Uid="Time_AddSchedule" FontWeight="SemiBold" />
 
                                 <CheckBox x:Name="HasEndTimeCheckBox"
@@ -89,9 +91,10 @@
 
                                 <Grid ColumnSpacing="8" RowSpacing="16">
                                     <Grid.ColumnDefinitions>
+                                        <!-- Auto Dark Mode TimePage と同じ: TimePicker は Auto 列で既定幅 -->
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
@@ -109,19 +112,10 @@
                                               Glyph="&#xE706;"
                                               VerticalAlignment="Center" />
                                     <TextBlock Grid.Column="1" x:Uid="Time_Start" />
-                                    <Grid Grid.Column="2"
-                                          Margin="16,0,0,0"
-                                          ColumnSpacing="8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <ComboBox x:Name="NewStartHourCombo"
-                                                  Style="{StaticResource PatternTimeComboBoxStyle}" />
-                                        <ComboBox x:Name="NewStartMinuteCombo"
-                                                  Grid.Column="1"
-                                                  Style="{StaticResource PatternTimeComboBoxStyle}" />
-                                    </Grid>
+                                    <TimePicker x:Name="NewTimePicker"
+                                                Grid.Column="2"
+                                                Margin="16,0,0,0"
+                                                ClockIdentifier="24HourClock" />
 
                                     <FontIcon Grid.Row="1"
                                               Grid.Column="0"
@@ -130,22 +124,12 @@
                                               Glyph="&#xE708;"
                                               VerticalAlignment="Center" />
                                     <TextBlock Grid.Row="1" Grid.Column="1" x:Uid="Time_End" />
-                                    <Grid Grid.Row="1"
-                                          Grid.Column="2"
-                                          Margin="16,0,0,0"
-                                          ColumnSpacing="8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <ComboBox x:Name="NewEndHourCombo"
-                                                  Style="{StaticResource PatternTimeComboBoxStyle}"
-                                                  IsEnabled="False" />
-                                        <ComboBox x:Name="NewEndMinuteCombo"
-                                                  Grid.Column="1"
-                                                  Style="{StaticResource PatternTimeComboBoxStyle}"
-                                                  IsEnabled="False" />
-                                    </Grid>
+                                    <TimePicker x:Name="NewEndTimePicker"
+                                                Grid.Row="1"
+                                                Grid.Column="2"
+                                                Margin="16,0,0,0"
+                                                IsEnabled="False"
+                                                ClockIdentifier="24HourClock" />
                                 </Grid>
 
                                 <StackPanel Spacing="8">
@@ -195,23 +179,21 @@
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Center"
                                         Padding="20,10" />
-                            </StackPanel>
-                        </controls:SettingsCard.Description>
+                        </StackPanel>
                     </controls:SettingsCard>
 
+                    <!-- Description 経由だと HeaderPanel 右 Margin=24 が常に空き、左右余白が非対称になる -->
                     <controls:SettingsCard x:Name="ScheduleRightPanel"
                                            Grid.Column="1"
+                                           ContentAlignment="Vertical"
+                                           HorizontalContentAlignment="Stretch"
                                            HorizontalAlignment="Stretch"
                                            VerticalAlignment="Stretch"
                                            MinHeight="0"
-                                           Padding="0">
-                        <controls:SettingsCard.Resources>
-                            <Thickness x:Key="SettingsCardPadding">0</Thickness>
-                        </controls:SettingsCard.Resources>
-                        <controls:SettingsCard.Description>
-                            <Grid x:Name="PatternsListHost"
-                                  MinHeight="200"
-                                  Padding="12,12,12,12">
+                                           Padding="12">
+                        <Grid x:Name="PatternsListHost"
+                              MinHeight="200"
+                              HorizontalAlignment="Stretch">
                                 <TextBlock x:Name="EmptyStateText"
                                            x:Uid="Time_EmptyState"
                                            TextWrapping="Wrap"
@@ -233,7 +215,8 @@
                                           ScrollViewer.VerticalScrollMode="Enabled"
                                           ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                           ScrollViewer.HorizontalScrollMode="Disabled"
-                                          Loaded="PatternsList_Loaded">
+                                          Loaded="PatternsList_Loaded"
+                                          SizeChanged="PatternsList_SizeChanged">
                                     <ListView.ItemTemplate>
                                         <DataTemplate x:DataType="local:Pattern">
                                             <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
@@ -252,7 +235,7 @@
                                                     <StackPanel VerticalAlignment="Center" Spacing="4">
                                                         <TextBlock x:Uid="Time_TimeRange" FontSize="12" Opacity="0.7" />
                                                         <StackPanel Spacing="4">
-                                                            <Grid ColumnSpacing="8">
+                                                            <Grid ColumnSpacing="12">
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="*" />
                                                                     <ColumnDefinition Width="*" />
@@ -267,7 +250,7 @@
                                                                        FontSize="12"
                                                                        Opacity="0.7"
                                                                        HorizontalAlignment="Center" />
-                                                            <Grid ColumnSpacing="8">
+                                                            <Grid ColumnSpacing="12">
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="*" />
                                                                     <ColumnDefinition Width="*" />
@@ -338,8 +321,7 @@
                                         </DataTemplate>
                                     </ListView.ItemTemplate>
                                 </ListView>
-                            </Grid>
-                        </controls:SettingsCard.Description>
+                        </Grid>
                     </controls:SettingsCard>
                 </Grid>
             </StackPanel>
