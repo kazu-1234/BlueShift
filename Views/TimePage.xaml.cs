@@ -49,7 +49,6 @@ namespace App1.Views
             ToggleSwitchClickHelper.BindCardClick(FilterToggleCard, FilterToggle);
             AttachSliderInteractions(NewIntensitySlider, SliderAdjustmentKind.Intensity);
             AttachSliderInteractions(NewColorTemperatureSlider, SliderAdjustmentKind.ColorTemperature);
-            TimePickerFlyoutFixHelper.Attach(NewTimePicker, NewEndTimePicker);
             PatternsList.ContainerContentChanging += PatternsList_ContainerContentChanging;
             ScheduleLeftPanel.Loaded += (_, _) => ConfigureSchedulePanelChrome(ScheduleLeftPanel);
             ScheduleRightPanel.Loaded += (_, _) =>
@@ -437,8 +436,6 @@ namespace App1.Views
                 AttachPatternTimePicker(pickers[0], pattern, isEnd: false);
             if (pickers.Count >= 2)
                 AttachPatternTimePicker(pickers[1], pattern, isEnd: true);
-
-            TimePickerFlyoutFixHelper.Attach(pickers.ToArray());
 
             DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => MeasureAndLogCardGaps("AfterAttachTimePickers"));
         }
