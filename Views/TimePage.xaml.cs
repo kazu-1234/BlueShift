@@ -69,8 +69,106 @@ namespace App1.Views
             ToggleSwitchClickHelper.BindCardClick(FilterToggleCard, FilterToggle);
             AttachSliderInteractions(NewIntensitySlider, SliderAdjustmentKind.Intensity);
             AttachSliderInteractions(NewColorTemperatureSlider, SliderAdjustmentKind.ColorTemperature);
-            TimePickerFlyoutFixHelper.Attach(NewTimePicker, NewEndTimePicker);
+            InitializeNewTimeCombos();
             PatternsList.ContainerContentChanging += PatternsList_ContainerContentChanging;
+        }
+
+        private void InitializeNewTimeCombos()
+        {
+            PopulateCombo(NewStartHourCombo, HourItems, "00");
+            PopulateCombo(NewStartMinuteCombo, MinuteItems, "00");
+            PopulateCombo(NewEndHourCombo, HourItems, "00");
+            PopulateCombo(NewEndMinuteCombo, MinuteItems, "00");
+            CompactComboBoxHelper.HideDropDownGlyph(NewStartHourCombo);
+            CompactComboBoxHelper.HideDropDownGlyph(NewStartMinuteCombo);
+            CompactComboBoxHelper.HideDropDownGlyph(NewEndHourCombo);
+            CompactComboBoxHelper.HideDropDownGlyph(NewEndMinuteCombo);
+            UpdateNewEndTimeCombosEnabled();
+        }
+
+        private static void PopulateCombo(ComboBox combo, string[] items, string selected)
+        {
+            combo.Items.Clear();
+            foreach (string item in items)
+                combo.Items.Add(item);
+            combo.SelectedItem = selected;
+        }
+
+        private void PatternsList_Loaded(object sender, RoutedEventArgs e)
+        {
+            ConfigurePatternsListScrollViewer();
+        }
+
+        /// <summary>
+        /// 縦スクロールバーが内容幅を予約してカード右に余白が開くのを防ぐ。
+        /// </summary>
+        private void ConfigurePatternsListScrollViewer()
+        {
+            if (FindDescendantScrollViewer(PatternsList) is not ScrollViewer sv)
+                return;
+
+            sv.Padding = new Thickness(0);
+            sv.Margin = new Thickness(0);
+
+            // ScrollViewer 既定テンプレは右列にバー幅を予約する → 0 にしてオーバーレイ化
+            if (FindDescendantByName(sv, "Root") is Grid root && root.ColumnDefinitions.Count >= 2)
+            {
+                root.ColumnDefinitions[1].Width = new GridLength(0);
+            }
+            else if (VisualTreeHelper.GetChildrenCount(sv) > 0
+                     && VisualTreeHelper.GetChild(sv, 0) is Grid layoutRoot
+                     && layoutRoot.ColumnDefinitions.Count >= 2)
+            {
+                layoutRoot.ColumnDefinitions[1].Width = new GridLength(0);
+            }
+
+            if (FindDescendantByName(sv, "ScrollContentPresenter") is FrameworkElement presenter)
+            {
+                presenter.Margin = new Thickness(0);
+                presenter.HorizontalAlignment = HorizontalAlignment.Stretch;
+                Grid.SetColumnSpan(presenter, 2);
+            }
+
+            if (FindDescendantByName(sv, "VerticalScrollBar") is FrameworkElement bar)
+            {
+                bar.HorizontalAlignment = HorizontalAlignment.Right;
+                bar.Margin = new Thickness(0);
+                Grid.SetColumn(bar, 0);
+                Grid.SetColumnSpan(bar, 2);
+                Canvas.SetZIndex(bar, 1);
+            }
+        }
+
+        private static ScrollViewer? FindDescendantScrollViewer(DependencyObject root)
+        {
+            int count = VisualTreeHelper.GetChildrenCount(root);
+            for (int i = 0; i < count; i++)
+            {
+                var child = VisualTreeHelper.GetChild(root, i);
+                if (child is ScrollViewer sv)
+                    return sv;
+                var nested = FindDescendantScrollViewer(child);
+                if (nested != null)
+                    return nested;
+            }
+
+            return null;
+        }
+
+        private static FrameworkElement? FindDescendantByName(DependencyObject parent, string name)
+        {
+            int count = VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < count; i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is FrameworkElement { Name: { } childName } fe && childName == name)
+                    return fe;
+                var nested = FindDescendantByName(child, name);
+                if (nested != null)
+                    return nested;
+            }
+
+            return null;
         }
 
         private void ApplyFilterToggleLabels()
@@ -102,6 +200,7 @@ namespace App1.Views
             DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
             {
                 SyncPatternsListHostHeight();
+                ConfigurePatternsListScrollViewer();
                 _state?.RefreshGamma?.Invoke();
             });
         }
@@ -551,20 +650,26 @@ namespace App1.Views
 
         private void HasEndTimeCheckBox_Changed(object sender, RoutedEventArgs e)
         {
-            NewEndTimePicker.IsEnabled = HasEndTimeCheckBox.IsChecked == true;
+            UpdateNewEndTimeCombosEnabled();
+        }
+
+        private void UpdateNewEndTimeCombosEnabled()
+        {
+            bool enabled = HasEndTimeCheckBox.IsChecked == true;
+            NewEndHourCombo.IsEnabled = enabled;
+            NewEndMinuteCombo.IsEnabled = enabled;
         }
 
         private void AddPattern_Click(object sender, RoutedEventArgs e)
         {
             if (_state == null) return;
 
-            var newTime = NewTimePicker.Time;
-            string timeStr = FormatTime(newTime);
+            string timeStr = FormatComboTime(NewStartHourCombo, NewStartMinuteCombo);
 
             bool hasEndTime = HasEndTimeCheckBox.IsChecked == true;
             string endTimeStr = "00:00";
             if (hasEndTime)
-                endTimeStr = FormatTime(NewEndTimePicker.Time);
+                endTimeStr = FormatComboTime(NewEndHourCombo, NewEndMinuteCombo);
 
             _state.Patterns.Add(new Pattern
             {
@@ -580,6 +685,14 @@ namespace App1.Views
             _state.PersistPatterns();
             _state.NotifyPatternsChanged();
             UpdateEmptyState();
+            ConfigurePatternsListScrollViewer();
+        }
+
+        private static string FormatComboTime(ComboBox hourCombo, ComboBox minuteCombo)
+        {
+            string hour = hourCombo.SelectedItem as string ?? "00";
+            string minute = minuteCombo.SelectedItem as string ?? "00";
+            return $"{hour}:{minute}";
         }
 
         private void DeletePattern_Click(object sender, RoutedEventArgs e)
@@ -604,9 +717,6 @@ namespace App1.Views
             foreach (var p in sorted)
                 _state.Patterns.Add(p);
         }
-
-        private static string FormatTime(TimeSpan time) =>
-            $"{time.Hours:D2}:{time.Minutes:D2}";
 
         private static bool TrySplitTime(string value, out int hour, out int minute)
         {

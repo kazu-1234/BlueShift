@@ -109,11 +109,19 @@
                                               Glyph="&#xE706;"
                                               VerticalAlignment="Center" />
                                     <TextBlock Grid.Column="1" x:Uid="Time_Start" />
-                                    <TimePicker x:Name="NewTimePicker"
-                                                Grid.Column="2"
-                                                Margin="16,0,0,0"
-                                                ClockIdentifier="24HourClock"
-                                                HorizontalAlignment="Stretch" />
+                                    <Grid Grid.Column="2"
+                                          Margin="16,0,0,0"
+                                          ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox x:Name="NewStartHourCombo"
+                                                  Style="{StaticResource PatternTimeComboBoxStyle}" />
+                                        <ComboBox x:Name="NewStartMinuteCombo"
+                                                  Grid.Column="1"
+                                                  Style="{StaticResource PatternTimeComboBoxStyle}" />
+                                    </Grid>
 
                                     <FontIcon Grid.Row="1"
                                               Grid.Column="0"
@@ -122,13 +130,22 @@
                                               Glyph="&#xE708;"
                                               VerticalAlignment="Center" />
                                     <TextBlock Grid.Row="1" Grid.Column="1" x:Uid="Time_End" />
-                                    <TimePicker x:Name="NewEndTimePicker"
-                                                Grid.Row="1"
-                                                Grid.Column="2"
-                                                Margin="16,0,0,0"
-                                                IsEnabled="False"
-                                                ClockIdentifier="24HourClock"
-                                                HorizontalAlignment="Stretch" />
+                                    <Grid Grid.Row="1"
+                                          Grid.Column="2"
+                                          Margin="16,0,0,0"
+                                          ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox x:Name="NewEndHourCombo"
+                                                  Style="{StaticResource PatternTimeComboBoxStyle}"
+                                                  IsEnabled="False" />
+                                        <ComboBox x:Name="NewEndMinuteCombo"
+                                                  Grid.Column="1"
+                                                  Style="{StaticResource PatternTimeComboBoxStyle}"
+                                                  IsEnabled="False" />
+                                    </Grid>
                                 </Grid>
 
                                 <StackPanel Spacing="8">
@@ -194,8 +211,7 @@
                         <controls:SettingsCard.Description>
                             <Grid x:Name="PatternsListHost"
                                   MinHeight="200"
-                                  Padding="12,12,12,12"
-                                  Margin="0,0,-4,0">
+                                  Padding="12,12,12,12">
                                 <TextBlock x:Name="EmptyStateText"
                                            x:Uid="Time_EmptyState"
                                            TextWrapping="Wrap"
@@ -216,7 +232,8 @@
                                           ScrollViewer.VerticalScrollBarVisibility="Auto"
                                           ScrollViewer.VerticalScrollMode="Enabled"
                                           ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                          ScrollViewer.HorizontalScrollMode="Disabled">
+                                          ScrollViewer.HorizontalScrollMode="Disabled"
+                                          Loaded="PatternsList_Loaded">
                                     <ListView.ItemTemplate>
                                         <DataTemplate x:DataType="local:Pattern">
                                             <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
