@@ -187,13 +187,15 @@
                                            HorizontalAlignment="Stretch"
                                            VerticalAlignment="Stretch"
                                            MinHeight="0"
-                                           Padding="12,12,12,12">
+                                           Padding="0">
                         <controls:SettingsCard.Resources>
-                            <!-- 一覧枠とカードの左右余白を揃える -->
-                            <Thickness x:Key="SettingsCardPadding">12,12,12,12</Thickness>
+                            <Thickness x:Key="SettingsCardPadding">0</Thickness>
                         </controls:SettingsCard.Resources>
                         <controls:SettingsCard.Description>
-                            <Grid x:Name="PatternsListHost" MinHeight="200" Margin="0">
+                            <Grid x:Name="PatternsListHost"
+                                  MinHeight="200"
+                                  Padding="12,12,12,12"
+                                  Margin="0,0,-4,0">
                                 <TextBlock x:Name="EmptyStateText"
                                            x:Uid="Time_EmptyState"
                                            TextWrapping="Wrap"
@@ -221,13 +223,13 @@
                                                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                                     BorderThickness="1"
                                                     CornerRadius="6"
-                                                    Padding="12,12,4,12"
+                                                    Padding="12,12,0,12"
                                                     HorizontalAlignment="Stretch">
                                                 <Grid ColumnSpacing="10">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="156" MinWidth="0" />
                                                         <ColumnDefinition Width="*" MinWidth="0" />
-                                                        <ColumnDefinition Width="40" />
+                                                        <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
 
                                                     <StackPanel VerticalAlignment="Center" Spacing="4">

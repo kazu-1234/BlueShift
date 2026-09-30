@@ -6,17 +6,19 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using System;
 using System.Collections.Generic;
+using Windows.Foundation;
 
 namespace App1.Views;
 
 /// <summary>
-/// TimePicker フライアウトの時・分選択ハイライトが中央で重ならないよう列間に隙間を入れる。
+/// TimePicker フライアウトの時・分選択ハイライトが隣列にはみ出さないよう、列を Clip する。
 /// </summary>
 internal static class TimePickerFlyoutFixHelper
 {
     private static readonly HashSet<TimePicker> Attached = [];
-    private static readonly Thickness FirstHostMargin = new(0, 0, 6, 0);
-    private static readonly Thickness SecondHostMargin = new(6, 0, 0, 0);
+    private static readonly HashSet<FrameworkElement> SizeHooked = [];
+    private static readonly Thickness FirstHostMargin = new(0, 0, 10, 0);
+    private static readonly Thickness SecondHostMargin = new(10, 0, 0, 0);
 
     public static void Attach(params TimePicker[] pickers)
     {
@@ -50,16 +52,15 @@ internal static class TimePickerFlyoutFixHelper
         XamlRoot root = picker.XamlRoot;
         DispatcherQueue queue = picker.DispatcherQueue;
 
-        // フライアウト生成・アニメーション後に複数回適用
         queue.TryEnqueue(DispatcherQueuePriority.Low, () => ApplyFix(root));
         var timer = queue.CreateTimer();
-        timer.Interval = TimeSpan.FromMilliseconds(80);
+        timer.Interval = TimeSpan.FromMilliseconds(50);
         int ticks = 0;
         timer.Tick += (_, _) =>
         {
             ApplyFix(root);
             ticks++;
-            if (ticks >= 5)
+            if (ticks >= 8)
                 timer.Stop();
         };
         timer.Start();
@@ -75,27 +76,87 @@ internal static class TimePickerFlyoutFixHelper
             if (popup.Child == null)
                 continue;
 
-            if (FindDescendantByName(popup.Child, "FirstPickerHost") is FrameworkElement first)
-                first.Margin = FirstHostMargin;
+            var columns = ResolvePickerColumns(popup.Child);
+            if (columns.Count < 2)
+                continue;
 
-            if (FindDescendantByName(popup.Child, "SecondPickerHost") is FrameworkElement second)
-                second.Margin = SecondHostMargin;
+            columns[0].Margin = FirstHostMargin;
+            columns[1].Margin = SecondHostMargin;
 
-            // 名前が取れない場合は隣接する選択列らしき要素に余白
-            if (FindDescendantByName(popup.Child, "FirstPickerHost") == null)
-                ApplyFallbackSpacing(popup.Child);
+            for (int i = 0; i < Math.Min(2, columns.Count); i++)
+            {
+                FrameworkElement column = columns[i];
+                ApplyClip(column);
+                HookSizeChanged(column);
+                ClipHighlightDescendants(column);
+            }
         }
     }
 
-    private static void ApplyFallbackSpacing(DependencyObject root)
+    private static void ClipHighlightDescendants(DependencyObject root)
+    {
+        int count = VisualTreeHelper.GetChildrenCount(root);
+        for (int i = 0; i < count; i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(root, i);
+            if (child is FrameworkElement fe)
+            {
+                string name = fe.Name ?? string.Empty;
+                string typeName = fe.GetType().Name;
+                if (name.Contains("Highlight", StringComparison.OrdinalIgnoreCase)
+                    || typeName.Contains("Highlight", StringComparison.OrdinalIgnoreCase))
+                {
+                    ApplyClip(fe);
+                    HookSizeChanged(fe);
+                    if (fe.Parent is FrameworkElement parent && parent.ActualWidth > 0)
+                    {
+                        fe.MaxWidth = parent.ActualWidth;
+                        ApplyClip(parent);
+                    }
+                }
+            }
+
+            ClipHighlightDescendants(child);
+        }
+    }
+
+    private static List<FrameworkElement> ResolvePickerColumns(DependencyObject root)
     {
         var columns = new List<FrameworkElement>();
+
+        if (FindDescendantByName(root, "FirstPickerHost") is FrameworkElement first)
+            columns.Add(first);
+        if (FindDescendantByName(root, "SecondPickerHost") is FrameworkElement second)
+            columns.Add(second);
+
+        if (columns.Count >= 2)
+            return columns;
+
+        columns.Clear();
         CollectLikelyPickerColumns(root, columns);
-        if (columns.Count < 2)
+        return columns;
+    }
+
+    private static void HookSizeChanged(FrameworkElement element)
+    {
+        if (!SizeHooked.Add(element))
             return;
 
-        columns[0].Margin = FirstHostMargin;
-        columns[1].Margin = SecondHostMargin;
+        element.SizeChanged += (_, _) => ApplyClip(element);
+    }
+
+    private static void ApplyClip(FrameworkElement element)
+    {
+        double w = element.ActualWidth;
+        double h = element.ActualHeight;
+        if (w <= 0 || h <= 0)
+            return;
+
+        // ハイライトが隣列へ描画されないよう、列境界で切り取る
+        element.Clip = new RectangleGeometry
+        {
+            Rect = new Rect(0, 0, w, h)
+        };
     }
 
     private static void CollectLikelyPickerColumns(DependencyObject parent, List<FrameworkElement> results)
@@ -104,12 +165,16 @@ internal static class TimePickerFlyoutFixHelper
         for (int i = 0; i < count; i++)
         {
             DependencyObject child = VisualTreeHelper.GetChild(parent, i);
-            if (child is FrameworkElement fe
-                && fe.ActualWidth is > 40 and < 120
-                && fe.ActualHeight > 120
-                && fe.GetType().Name.Contains("Looping", StringComparison.Ordinal))
+            if (child is FrameworkElement fe)
             {
-                results.Add(fe);
+                string typeName = fe.GetType().Name;
+                if ((typeName.Contains("Looping", StringComparison.Ordinal)
+                     || typeName.Contains("Picker", StringComparison.Ordinal))
+                    && fe.ActualWidth is > 32 and < 160
+                    && fe.ActualHeight > 100)
+                {
+                    results.Add(fe);
+                }
             }
 
             CollectLikelyPickerColumns(child, results);

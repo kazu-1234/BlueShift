@@ -65,7 +65,7 @@
                 <Setter Property="Padding" Value="0" />
                 <Setter Property="Margin" Value="0,0,0,8" />
                 <!-- 時分コンボ縦積み分を含むカード高さ -->
-                <Setter Property="MinHeight" Value="156" />
+                <Setter Property="MinHeight" Value="168" />
                 <Setter Property="MinWidth" Value="0" />
             </Style>
 
@@ -79,7 +79,8 @@
 
             <Style x:Key="PatternTimeComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource DefaultComboBoxStyle}">
                 <Setter Property="MinWidth" Value="0" />
-                <Setter Property="Padding" Value="4,4" />
+                <Setter Property="MinHeight" Value="36" />
+                <Setter Property="Padding" Value="8,6" />
                 <Setter Property="FontSize" Value="15" />
                 <Setter Property="HorizontalAlignment" Value="Stretch" />
                 <Setter Property="VerticalAlignment" Value="Center" />
@@ -88,8 +89,10 @@
             </Style>
 
             <Style x:Key="DeleteIconButtonStyle" TargetType="Button" BasedOn="{StaticResource SubtleButtonStyle}">
-                <Setter Property="Width" Value="40" />
-                <Setter Property="Height" Value="40" />
+                <Setter Property="MinWidth" Value="36" />
+                <Setter Property="MinHeight" Value="36" />
+                <Setter Property="Width" Value="36" />
+                <Setter Property="Height" Value="36" />
                 <Setter Property="Padding" Value="0" />
                 <Setter Property="HorizontalAlignment" Value="Right" />
                 <Setter Property="VerticalAlignment" Value="Center" />
