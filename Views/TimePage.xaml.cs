@@ -23,10 +23,37 @@ namespace App1.Views
             ColorTemperature
         }
 
+        private enum TimeComboKind
+        {
+            StartHour,
+            StartMinute,
+            EndHour,
+            EndMinute
+        }
+
+        private sealed class TimeComboTag
+        {
+            public required string PatternId { get; init; }
+            public required TimeComboKind Kind { get; init; }
+        }
+
+        private const string DashItem = "-";
+
+        private static readonly string[] HourItems =
+            Enumerable.Range(0, 24).Select(h => h.ToString("D2", CultureInfo.InvariantCulture)).ToArray();
+
+        private static readonly string[] MinuteItems =
+            Enumerable.Range(0, 60).Select(m => m.ToString("D2", CultureInfo.InvariantCulture)).ToArray();
+
+        private static readonly string[] EndHourItems =
+            new[] { DashItem }.Concat(HourItems).ToArray();
+
+        private static readonly string[] EndMinuteItems =
+            new[] { DashItem }.Concat(MinuteItems).ToArray();
+
         private AppState? _state;
         private bool _isInitializing;
-        private bool _syncingTimePickers;
-        private bool _newHasEndTime;
+        private bool _syncingTimeCombos;
         private readonly HashSet<Slider> _adjustingSliders = new();
         private readonly HashSet<Slider> _wheelAdjustingSliders = new();
         private readonly HashSet<Slider> _bindingSliders = new();
@@ -43,7 +70,6 @@ namespace App1.Views
             AttachSliderInteractions(NewIntensitySlider, SliderAdjustmentKind.Intensity);
             AttachSliderInteractions(NewColorTemperatureSlider, SliderAdjustmentKind.ColorTemperature);
             PatternsList.ContainerContentChanging += PatternsList_ContainerContentChanging;
-            UpdateNewEndTimeSlot();
         }
 
         private void ApplyFilterToggleLabels()
@@ -136,8 +162,8 @@ namespace App1.Views
                 {
                     foreach (var slider in FindDescendantSliders(recycledContainer))
                         DetachSliderInteractions(slider);
-                    foreach (var picker in FindDescendantTimePickers(recycledContainer))
-                        DetachTimePickerInteractions(picker);
+                    foreach (var combo in FindDescendantComboBoxes(recycledContainer))
+                        DetachTimeCombo(combo);
                 }
 
                 return;
@@ -161,11 +187,14 @@ namespace App1.Views
             if (args.Item is not Pattern pattern)
                 return;
 
-            var pickers = FindDescendantTimePickers(container);
-            if (pickers.Count >= 1)
-                AttachStartTimePicker(pickers[0], pattern);
-            if (pickers.Count >= 2)
-                AttachEndTimePicker(pickers[1], pattern);
+            var combos = FindDescendantComboBoxes(container);
+            if (combos.Count < 4)
+                return;
+
+            AttachTimeCombo(combos[0], pattern, TimeComboKind.StartHour);
+            AttachTimeCombo(combos[1], pattern, TimeComboKind.StartMinute);
+            AttachTimeCombo(combos[2], pattern, TimeComboKind.EndHour);
+            AttachTimeCombo(combos[3], pattern, TimeComboKind.EndMinute);
         }
 
         private static List<Slider> FindDescendantSliders(DependencyObject root)
@@ -175,11 +204,11 @@ namespace App1.Views
             return sliders;
         }
 
-        private static List<TimePicker> FindDescendantTimePickers(DependencyObject root)
+        private static List<ComboBox> FindDescendantComboBoxes(DependencyObject root)
         {
-            var pickers = new List<TimePicker>();
-            CollectDescendants(root, pickers);
-            return pickers;
+            var combos = new List<ComboBox>();
+            CollectDescendants(root, combos);
+            return combos;
         }
 
         private static void CollectDescendants<T>(DependencyObject root, List<T> results)
@@ -218,44 +247,204 @@ namespace App1.Views
             _sliderKinds.Remove(slider);
         }
 
-        private void AttachStartTimePicker(TimePicker picker, Pattern pattern)
+        private void AttachTimeCombo(ComboBox combo, Pattern pattern, TimeComboKind kind)
         {
-            DetachTimePickerInteractions(picker);
-            picker.Tag = pattern.Id;
-            _syncingTimePickers = true;
+            DetachTimeCombo(combo);
+
+            bool isEnd = kind is TimeComboKind.EndHour or TimeComboKind.EndMinute;
+            bool isHour = kind is TimeComboKind.StartHour or TimeComboKind.EndHour;
+            string[] items = (isEnd, isHour) switch
+            {
+                (true, true) => EndHourItems,
+                (true, false) => EndMinuteItems,
+                (false, true) => HourItems,
+                _ => MinuteItems
+            };
+
+            _syncingTimeCombos = true;
             try
             {
-                picker.Time = ParseTimeOrDefault(pattern.Time);
+                bool needsRebuild = combo.Tag is not TimeComboTag existing
+                    || existing.Kind != kind
+                    || combo.Items.Count != items.Length;
+                if (needsRebuild)
+                {
+                    combo.Items.Clear();
+                    foreach (string item in items)
+                        combo.Items.Add(item);
+                }
+
+                combo.Tag = new TimeComboTag { PatternId = pattern.Id, Kind = kind };
+                combo.SelectedItem = ResolveSelectedItem(pattern, kind);
             }
             finally
             {
-                _syncingTimePickers = false;
+                _syncingTimeCombos = false;
             }
 
-            picker.SelectedTimeChanged += PatternStartTimePicker_SelectedTimeChanged;
+            combo.SelectionChanged += PatternTimeCombo_SelectionChanged;
         }
 
-        private void AttachEndTimePicker(TimePicker picker, Pattern pattern)
+        private void DetachTimeCombo(ComboBox combo)
         {
-            DetachTimePickerInteractions(picker);
-            picker.Tag = pattern.Id;
-            _syncingTimePickers = true;
-            try
-            {
-                picker.Time = ParseTimeOrDefault(pattern.EndTime);
-            }
-            finally
-            {
-                _syncingTimePickers = false;
-            }
-
-            picker.SelectedTimeChanged += PatternEndTimePicker_SelectedTimeChanged;
+            combo.SelectionChanged -= PatternTimeCombo_SelectionChanged;
         }
 
-        private void DetachTimePickerInteractions(TimePicker picker)
+        private static string ResolveSelectedItem(Pattern pattern, TimeComboKind kind)
         {
-            picker.SelectedTimeChanged -= PatternStartTimePicker_SelectedTimeChanged;
-            picker.SelectedTimeChanged -= PatternEndTimePicker_SelectedTimeChanged;
+            if (kind is TimeComboKind.EndHour or TimeComboKind.EndMinute && !pattern.HasEndTime)
+                return DashItem;
+
+            string source = kind is TimeComboKind.StartHour or TimeComboKind.StartMinute
+                ? pattern.Time
+                : pattern.EndTime;
+
+            if (!TrySplitTime(source, out int hour, out int minute))
+                return kind is TimeComboKind.StartHour or TimeComboKind.EndHour ? "00" : "00";
+
+            return kind is TimeComboKind.StartHour or TimeComboKind.EndHour
+                ? hour.ToString("D2", CultureInfo.InvariantCulture)
+                : minute.ToString("D2", CultureInfo.InvariantCulture);
+        }
+
+        private void PatternTimeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_syncingTimeCombos || _isInitializing || _state == null)
+                return;
+
+            if (sender is not ComboBox combo || combo.Tag is not TimeComboTag tag)
+                return;
+
+            var pattern = _state.Patterns.FirstOrDefault(p => p.Id == tag.PatternId);
+            if (pattern == null)
+                return;
+
+            string selected = combo.SelectedItem as string ?? DashItem;
+
+            if (tag.Kind is TimeComboKind.StartHour or TimeComboKind.StartMinute)
+            {
+                ApplyStartTimeChange(pattern, tag.Kind, selected);
+                return;
+            }
+
+            ApplyEndTimeChange(pattern, tag.Kind, selected, combo);
+        }
+
+        private void ApplyStartTimeChange(Pattern pattern, TimeComboKind kind, string selected)
+        {
+            if (selected == DashItem)
+                return;
+
+            if (!TrySplitTime(pattern.Time, out int hour, out int minute))
+            {
+                hour = 0;
+                minute = 0;
+            }
+
+            if (kind == TimeComboKind.StartHour)
+            {
+                if (!int.TryParse(selected, NumberStyles.None, CultureInfo.InvariantCulture, out hour))
+                    return;
+            }
+            else
+            {
+                if (!int.TryParse(selected, NumberStyles.None, CultureInfo.InvariantCulture, out minute))
+                    return;
+            }
+
+            string timeStr = $"{hour:D2}:{minute:D2}";
+            if (pattern.Time == timeStr)
+                return;
+
+            pattern.Time = timeStr;
+            SortPatternsByStartTime();
+            _state?.PersistPatterns();
+            _state?.NotifyPatternsChanged();
+        }
+
+        private void ApplyEndTimeChange(Pattern pattern, TimeComboKind kind, string selected, ComboBox source)
+        {
+            if (!FindSiblingEndCombos(source, out ComboBox? endHourCombo, out ComboBox? endMinuteCombo)
+                || endHourCombo == null
+                || endMinuteCombo == null)
+            {
+                return;
+            }
+
+            string hourValue = endHourCombo.SelectedItem as string ?? DashItem;
+            string minuteValue = endMinuteCombo.SelectedItem as string ?? DashItem;
+
+            if (kind == TimeComboKind.EndHour)
+                hourValue = selected;
+            else
+                minuteValue = selected;
+
+            // 時が - なら分も - に揃える
+            if (hourValue == DashItem && minuteValue != DashItem)
+            {
+                _syncingTimeCombos = true;
+                try
+                {
+                    endMinuteCombo.SelectedItem = DashItem;
+                }
+                finally
+                {
+                    _syncingTimeCombos = false;
+                }
+
+                minuteValue = DashItem;
+            }
+
+            if (hourValue == DashItem || minuteValue == DashItem)
+            {
+                if (!pattern.HasEndTime)
+                    return;
+
+                pattern.HasEndTime = false;
+                _state?.PersistPatterns();
+                _state?.NotifyPatternsChanged();
+                return;
+            }
+
+            if (!int.TryParse(hourValue, NumberStyles.None, CultureInfo.InvariantCulture, out int hour)
+                || !int.TryParse(minuteValue, NumberStyles.None, CultureInfo.InvariantCulture, out int minute))
+            {
+                return;
+            }
+
+            string endTimeStr = $"{hour:D2}:{minute:D2}";
+            if (pattern.HasEndTime && pattern.EndTime == endTimeStr)
+                return;
+
+            pattern.HasEndTime = true;
+            pattern.EndTime = endTimeStr;
+            _state?.PersistPatterns();
+            _state?.NotifyPatternsChanged();
+        }
+
+        private static bool FindSiblingEndCombos(ComboBox source, out ComboBox? endHour, out ComboBox? endMinute)
+        {
+            endHour = null;
+            endMinute = null;
+
+            DependencyObject? current = source;
+            while (current != null)
+            {
+                if (current is ListViewItem item)
+                {
+                    var combos = FindDescendantComboBoxes(item);
+                    if (combos.Count < 4)
+                        return false;
+
+                    endHour = combos[2];
+                    endMinute = combos[3];
+                    return true;
+                }
+
+                current = VisualTreeHelper.GetParent(current);
+            }
+
+            return false;
         }
 
         private void Slider_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -330,23 +519,9 @@ namespace App1.Views
             _state.IsFilterEnabled = FilterToggle.IsOn;
         }
 
-        private void UpdateNewEndTimeSlot()
+        private void HasEndTimeCheckBox_Changed(object sender, RoutedEventArgs e)
         {
-            NewEndTimePicker.Visibility = _newHasEndTime ? Visibility.Visible : Visibility.Collapsed;
-            NewEndTimeDashButton.Visibility = _newHasEndTime ? Visibility.Collapsed : Visibility.Visible;
-            NewClearEndTimeButton.Visibility = _newHasEndTime ? Visibility.Visible : Visibility.Collapsed;
-        }
-
-        private void NewEndTimeDashButton_Click(object sender, RoutedEventArgs e)
-        {
-            _newHasEndTime = true;
-            UpdateNewEndTimeSlot();
-        }
-
-        private void NewClearEndTimeButton_Click(object sender, RoutedEventArgs e)
-        {
-            _newHasEndTime = false;
-            UpdateNewEndTimeSlot();
+            NewEndTimePicker.IsEnabled = HasEndTimeCheckBox.IsChecked == true;
         }
 
         private void AddPattern_Click(object sender, RoutedEventArgs e)
@@ -356,14 +531,15 @@ namespace App1.Views
             var newTime = NewTimePicker.Time;
             string timeStr = FormatTime(newTime);
 
+            bool hasEndTime = HasEndTimeCheckBox.IsChecked == true;
             string endTimeStr = "00:00";
-            if (_newHasEndTime)
+            if (hasEndTime)
                 endTimeStr = FormatTime(NewEndTimePicker.Time);
 
             _state.Patterns.Add(new Pattern
             {
                 Time = timeStr,
-                HasEndTime = _newHasEndTime,
+                HasEndTime = hasEndTime,
                 EndTime = endTimeStr,
                 Intensity = (int)NewIntensitySlider.Value,
                 ColorTemperatureKelvin = (int)NewColorTemperatureSlider.Value
@@ -389,73 +565,6 @@ namespace App1.Views
             UpdateEmptyState();
         }
 
-        private void PatternStartTimePicker_SelectedTimeChanged(TimePicker sender, TimePickerSelectedValueChangedEventArgs args)
-        {
-            if (_syncingTimePickers || _isInitializing || _state == null)
-                return;
-
-            if (GetPatternFromTag(sender.Tag) is not Pattern pattern)
-                return;
-
-            string timeStr = FormatTime(sender.Time);
-            if (pattern.Time == timeStr)
-                return;
-
-            pattern.Time = timeStr;
-            SortPatternsByStartTime();
-            _state.PersistPatterns();
-            _state.NotifyPatternsChanged();
-        }
-
-        private void PatternEndTimePicker_SelectedTimeChanged(TimePicker sender, TimePickerSelectedValueChangedEventArgs args)
-        {
-            if (_syncingTimePickers || _isInitializing || _state == null)
-                return;
-
-            if (GetPatternFromTag(sender.Tag) is not Pattern pattern)
-                return;
-
-            if (!pattern.HasEndTime)
-                return;
-
-            string timeStr = FormatTime(sender.Time);
-            if (pattern.EndTime == timeStr)
-                return;
-
-            pattern.EndTime = timeStr;
-            _state.PersistPatterns();
-            _state.NotifyPatternsChanged();
-        }
-
-        private void PatternEndTimeDashButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (_state == null || sender is not Button btn)
-                return;
-
-            if (GetPatternFromTag(btn.Tag) is not Pattern pattern)
-                return;
-
-            pattern.HasEndTime = true;
-            if (string.IsNullOrWhiteSpace(pattern.EndTime))
-                pattern.EndTime = "00:00";
-
-            _state.PersistPatterns();
-            _state.NotifyPatternsChanged();
-        }
-
-        private void PatternClearEndTimeButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (_state == null || sender is not Button btn)
-                return;
-
-            if (GetPatternFromTag(btn.Tag) is not Pattern pattern)
-                return;
-
-            pattern.HasEndTime = false;
-            _state.PersistPatterns();
-            _state.NotifyPatternsChanged();
-        }
-
         private void SortPatternsByStartTime()
         {
             if (_state == null) return;
@@ -469,23 +578,16 @@ namespace App1.Views
         private static string FormatTime(TimeSpan time) =>
             $"{time.Hours:D2}:{time.Minutes:D2}";
 
-        private static TimeSpan ParseTimeOrDefault(string value)
+        private static bool TrySplitTime(string value, out int hour, out int minute)
         {
-            if (TimeSpan.TryParseExact(value, @"hh\:mm", CultureInfo.InvariantCulture, out var time))
-                return time;
+            hour = 0;
+            minute = 0;
+            var parts = value.Split(':');
+            if (parts.Length != 2)
+                return false;
 
-            if (TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out time))
-                return time;
-
-            return TimeSpan.Zero;
-        }
-
-        private Pattern? GetPatternFromTag(object? tag)
-        {
-            if (_state == null || tag is not string id)
-                return null;
-
-            return _state.Patterns.FirstOrDefault(p => p.Id == id);
+            return int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out hour)
+                && int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out minute);
         }
 
         private void AnySlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)

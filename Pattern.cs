@@ -1,7 +1,6 @@
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using Microsoft.UI.Xaml;
 
 namespace App1
 {
@@ -97,15 +96,6 @@ namespace App1
 
         public bool ShowEndTime => HasEndTime;
 
-        public Visibility EndTimePickerVisibility =>
-            HasEndTime ? Visibility.Visible : Visibility.Collapsed;
-
-        public Visibility EndTimeDashVisibility =>
-            HasEndTime ? Visibility.Collapsed : Visibility.Visible;
-
-        public Visibility ClearEndTimeVisibility =>
-            HasEndTime ? Visibility.Visible : Visibility.Collapsed;
-
         public event PropertyChangedEventHandler? PropertyChanged;
 
         private void NotifyDisplayPropertiesChanged()
@@ -113,9 +103,6 @@ namespace App1
             OnPropertyChanged();
             OnPropertyChanged(nameof(TimeRangeDisplay));
             OnPropertyChanged(nameof(ShowEndTime));
-            OnPropertyChanged(nameof(EndTimePickerVisibility));
-            OnPropertyChanged(nameof(EndTimeDashVisibility));
-            OnPropertyChanged(nameof(ClearEndTimeVisibility));
         }
 
         private void OnPropertyChanged([CallerMemberName] string? propertyName = null)

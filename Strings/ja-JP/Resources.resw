@@ -104,10 +104,7 @@
     <value>終了時間を指定する</value>
   </data>
   <data name="Time_EndNone.Content" xml:space="preserve">
-    <value>--</value>
-  </data>
-  <data name="Time_ClearEnd.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
-    <value>終了なし</value>
+    <value>-</value>
   </data>
   <data name="Time_Start.Text" xml:space="preserve">
     <value>開始</value>

@@ -104,10 +104,7 @@
     <value>Specify end time</value>
   </data>
   <data name="Time_EndNone.Content" xml:space="preserve">
-    <value>--</value>
-  </data>
-  <data name="Time_ClearEnd.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
-    <value>No end time</value>
+    <value>-</value>
   </data>
   <data name="Time_Start.Text" xml:space="preserve">
     <value>Start</value>
