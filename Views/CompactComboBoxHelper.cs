@@ -16,6 +16,7 @@ internal static class CompactComboBoxHelper
     private const double BorderThicknessTotal = 2;
     private static readonly Thickness GlyphMargin = new(0, 0, 6, 0);
     private static readonly HashSet<ComboBox> FitToTextBoxes = [];
+    private static readonly HashSet<ComboBox> GlyphHiddenBoxes = [];
     private static readonly HashSet<ComboBox> Applying = [];
 
     public static void Attach(params ComboBox[] boxes)
@@ -27,6 +28,54 @@ internal static class CompactComboBoxHelper
             box.Loaded += OnLoaded;
             box.SizeChanged += OnSizeChanged;
             box.SelectionChanged += OnSelectionChanged;
+        }
+    }
+
+    /// <summary>
+    /// ドロップダウン矢印を消し、内容列を全幅にする（登録カードの時分コンボ用）。
+    /// </summary>
+    public static void HideDropDownGlyph(ComboBox box)
+    {
+        if (GlyphHiddenBoxes.Add(box))
+        {
+            box.Loaded += OnHideGlyphLoaded;
+            box.SizeChanged += OnHideGlyphSizeChanged;
+        }
+
+        ApplyHideDropDownGlyph(box);
+    }
+
+    private static void OnHideGlyphLoaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is ComboBox box)
+            ApplyHideDropDownGlyph(box);
+    }
+
+    private static void OnHideGlyphSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (sender is ComboBox box)
+            ApplyHideDropDownGlyph(box);
+    }
+
+    private static void ApplyHideDropDownGlyph(ComboBox box)
+    {
+        if (FindDescendant(box, "LayoutRoot") == null)
+            box.ApplyTemplate();
+
+        if (FindDescendant(box, "DropDownGlyph") is FrameworkElement glyph)
+            glyph.Visibility = Visibility.Collapsed;
+
+        if (FindDescendant(box, "LayoutRoot") is Grid { ColumnDefinitions.Count: >= 2 } layoutRoot)
+        {
+            layoutRoot.ColumnDefinitions[0].Width = new GridLength(1, GridUnitType.Star);
+            layoutRoot.ColumnDefinitions[1].Width = new GridLength(0);
+        }
+
+        if (FindDescendant(box, "ContentPresenter") is FrameworkElement content)
+        {
+            double side = box.Padding.Left;
+            content.Margin = new Thickness(side, box.Padding.Top, side, box.Padding.Bottom);
+            content.HorizontalAlignment = HorizontalAlignment.Center;
         }
     }
 

@@ -214,13 +214,13 @@
                                                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                                     BorderThickness="1"
                                                     CornerRadius="6"
-                                                    Padding="16,12,12,12"
+                                                    Padding="12,12,12,12"
                                                     HorizontalAlignment="Stretch">
                                                 <Grid ColumnSpacing="10">
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="120" MinWidth="0" />
+                                                        <ColumnDefinition Width="156" MinWidth="0" />
                                                         <ColumnDefinition Width="*" MinWidth="0" />
-                                                        <ColumnDefinition Width="48" />
+                                                        <ColumnDefinition Width="44" />
                                                     </Grid.ColumnDefinitions>
 
                                                     <StackPanel VerticalAlignment="Center" Spacing="4">

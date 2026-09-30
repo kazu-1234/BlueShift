@@ -69,11 +69,11 @@
                 <Setter Property="MinWidth" Value="0" />
             </Style>
 
-            <!-- 登録カード左列の時・分 ComboBox（120px 列に2つ並ぶ） -->
+            <!-- 登録カード左列の時・分 ComboBox（矢印なし・ホイール操作） -->
             <Style x:Key="PatternTimeComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource DefaultComboBoxStyle}">
                 <Setter Property="MinWidth" Value="0" />
-                <Setter Property="Padding" Value="4,1,0,1" />
-                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Padding" Value="8,2,8,2" />
+                <Setter Property="FontSize" Value="13" />
                 <Setter Property="HorizontalAlignment" Value="Stretch" />
                 <Setter Property="VerticalAlignment" Value="Center" />
                 <Setter Property="HorizontalContentAlignment" Value="Center" />

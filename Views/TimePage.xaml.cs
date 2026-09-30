@@ -282,12 +282,41 @@ namespace App1.Views
                 _syncingTimeCombos = false;
             }
 
+            CompactComboBoxHelper.HideDropDownGlyph(combo);
+            combo.PointerWheelChanged += PatternTimeCombo_PointerWheelChanged;
             combo.SelectionChanged += PatternTimeCombo_SelectionChanged;
         }
 
         private void DetachTimeCombo(ComboBox combo)
         {
+            combo.PointerWheelChanged -= PatternTimeCombo_PointerWheelChanged;
             combo.SelectionChanged -= PatternTimeCombo_SelectionChanged;
+        }
+
+        private void PatternTimeCombo_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
+        {
+            if (sender is not ComboBox combo || !combo.IsEnabled || combo.Items.Count == 0)
+                return;
+
+            int delta = e.GetCurrentPoint(combo).Properties.MouseWheelDelta;
+            if (delta == 0)
+                return;
+
+            // 上スクロール（正）でインデックス増加＝時刻が進む
+            int steps = delta > 0 ? 1 : -1;
+            int current = combo.SelectedIndex;
+            if (current < 0)
+                current = 0;
+
+            int next = Math.Clamp(current + steps, 0, combo.Items.Count - 1);
+            if (next == current)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            combo.SelectedIndex = next;
+            e.Handled = true;
         }
 
         private static string ResolveSelectedItem(Pattern pattern, TimeComboKind kind)
