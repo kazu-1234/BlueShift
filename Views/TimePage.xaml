@@ -35,7 +35,8 @@
                 <Grid x:Name="ScheduleLayoutGrid"
                       ColumnSpacing="16"
                       RowSpacing="16"
-                      MinHeight="280">
+                      MinHeight="280"
+                      SizeChanged="ScheduleLayoutGrid_SizeChanged">
                     <VisualStateManager.VisualStateGroups>
                         <VisualStateGroup x:Name="ScheduleLayoutStates">
                             <VisualState x:Name="Wide">
@@ -75,15 +76,11 @@
                     <controls:SettingsCard x:Name="ScheduleLeftPanel"
                                            Grid.Column="0"
                                            HorizontalAlignment="Stretch"
-                                           VerticalAlignment="Stretch">
+                                           VerticalAlignment="Stretch"
+                                           SizeChanged="ScheduleLeftPanel_SizeChanged">
                         <controls:SettingsCard.Description>
                             <StackPanel Spacing="16">
                                 <TextBlock x:Uid="Time_AddSchedule" FontWeight="SemiBold" />
-
-                                <CheckBox x:Name="HasEndTimeCheckBox"
-                                          x:Uid="Time_SpecifyEndTime"
-                                          Checked="HasEndTimeCheckBox_Changed"
-                                          Unchecked="HasEndTimeCheckBox_Changed" />
 
                                 <Grid ColumnSpacing="8" RowSpacing="16">
                                     <Grid.ColumnDefinitions>
@@ -120,13 +117,33 @@
                                               Glyph="&#xE708;"
                                               VerticalAlignment="Center" />
                                     <TextBlock Grid.Row="1" Grid.Column="1" x:Uid="Time_End" />
-                                    <TimePicker x:Name="NewEndTimePicker"
-                                                Grid.Row="1"
-                                                Grid.Column="2"
-                                                Margin="16,0,0,0"
-                                                IsEnabled="False"
-                                                ClockIdentifier="24HourClock"
-                                                HorizontalAlignment="Stretch" />
+                                    <Grid Grid.Row="1"
+                                          Grid.Column="2"
+                                          Margin="16,0,0,0"
+                                          ColumnSpacing="0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TimePicker x:Name="NewEndTimePicker"
+                                                    ClockIdentifier="24HourClock"
+                                                    HorizontalAlignment="Stretch"
+                                                    Visibility="Collapsed" />
+                                        <Button x:Name="NewEndTimeDashButton"
+                                                x:Uid="Time_EndNone"
+                                                Style="{StaticResource EndTimeDashButtonStyle}"
+                                                Click="NewEndTimeDashButton_Click" />
+                                        <Button x:Name="NewClearEndTimeButton"
+                                                Grid.Column="1"
+                                                Style="{StaticResource ClearEndTimeButtonStyle}"
+                                                Visibility="Collapsed"
+                                                Click="NewClearEndTimeButton_Click"
+                                                x:Uid="Time_ClearEnd">
+                                            <FontIcon Glyph="&#xE711;"
+                                                      FontSize="12"
+                                                      FontFamily="{ThemeResource SymbolThemeFontFamily}" />
+                                        </Button>
+                                    </Grid>
                                 </Grid>
 
                                 <StackPanel Spacing="8">
@@ -186,7 +203,7 @@
                                            VerticalAlignment="Stretch"
                                            MinHeight="0">
                         <controls:SettingsCard.Description>
-                            <Grid MinHeight="200">
+                            <Grid x:Name="PatternsListHost" MinHeight="200">
                                 <TextBlock x:Name="EmptyStateText"
                                            x:Uid="Time_EmptyState"
                                            TextWrapping="Wrap"
@@ -201,7 +218,11 @@
                                           ItemContainerStyle="{StaticResource PatternListItemContainerStyle}"
                                           Visibility="Collapsed"
                                           VerticalAlignment="Stretch"
-                                          HorizontalAlignment="Stretch">
+                                          HorizontalAlignment="Stretch"
+                                          ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                          ScrollViewer.VerticalScrollMode="Enabled"
+                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                          ScrollViewer.HorizontalScrollMode="Disabled">
                                     <ListView.ItemTemplate>
                                         <DataTemplate x:DataType="local:Pattern">
                                             <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
@@ -210,22 +231,82 @@
                                                     CornerRadius="6"
                                                     Padding="16,12,12,12"
                                                     HorizontalAlignment="Stretch">
-                                                <Grid ColumnSpacing="10">
+                                                <Grid RowSpacing="10" ColumnSpacing="10">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="120" MinWidth="0" />
                                                         <ColumnDefinition Width="*" MinWidth="0" />
                                                         <ColumnDefinition Width="48" />
                                                     </Grid.ColumnDefinitions>
 
-                                                    <StackPanel VerticalAlignment="Center" Spacing="4">
-                                                        <TextBlock x:Uid="Time_TimeRange" FontSize="12" Opacity="0.7" />
-                                                        <TextBlock Text="{x:Bind TimeRangeDisplay, Mode=OneWay}"
-                                                                   FontSize="15"
-                                                                   FontWeight="SemiBold"
-                                                                   TextWrapping="Wrap" />
-                                                    </StackPanel>
+                                                    <TextBlock x:Uid="Time_TimeRange"
+                                                               FontSize="12"
+                                                               Opacity="0.7"
+                                                               VerticalAlignment="Center" />
 
-                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="10" MinWidth="0">
+                                                    <Button Grid.Column="1"
+                                                            Grid.RowSpan="3"
+                                                            Style="{StaticResource DeleteIconButtonStyle}"
+                                                            Tag="{x:Bind Id}"
+                                                            Click="DeletePattern_Click"
+                                                            x:Uid="Time_Delete"
+                                                            VerticalAlignment="Center">
+                                                        <FontIcon Glyph="&#xE74D;"
+                                                                  FontSize="16"
+                                                                  FontFamily="{ThemeResource SymbolThemeFontFamily}" />
+                                                    </Button>
+
+                                                    <Grid Grid.Row="1"
+                                                          ColumnSpacing="8"
+                                                          VerticalAlignment="Center">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" MinWidth="0" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="*" MinWidth="0" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <TimePicker ClockIdentifier="24HourClock"
+                                                                    HorizontalAlignment="Stretch"
+                                                                    Tag="{x:Bind Id}"
+                                                                    DataContext="{x:Bind}" />
+
+                                                        <TextBlock Grid.Column="1"
+                                                                   Text="～"
+                                                                   VerticalAlignment="Center"
+                                                                   Margin="0,0,0,0" />
+
+                                                        <Grid Grid.Column="2">
+                                                            <TimePicker ClockIdentifier="24HourClock"
+                                                                        HorizontalAlignment="Stretch"
+                                                                        Tag="{x:Bind Id}"
+                                                                        Visibility="{x:Bind EndTimePickerVisibility, Mode=OneWay}"
+                                                                        DataContext="{x:Bind}" />
+                                                            <Button x:Uid="Time_EndNone"
+                                                                    Style="{StaticResource EndTimeDashButtonStyle}"
+                                                                    Tag="{x:Bind Id}"
+                                                                    Visibility="{x:Bind EndTimeDashVisibility, Mode=OneWay}"
+                                                                    Click="PatternEndTimeDashButton_Click" />
+                                                        </Grid>
+
+                                                        <Button Grid.Column="3"
+                                                                Style="{StaticResource ClearEndTimeButtonStyle}"
+                                                                Tag="{x:Bind Id}"
+                                                                Visibility="{x:Bind ClearEndTimeVisibility, Mode=OneWay}"
+                                                                Click="PatternClearEndTimeButton_Click"
+                                                                x:Uid="Time_ClearEnd">
+                                                            <FontIcon Glyph="&#xE711;"
+                                                                      FontSize="12"
+                                                                      FontFamily="{ThemeResource SymbolThemeFontFamily}" />
+                                                        </Button>
+                                                    </Grid>
+
+                                                    <StackPanel Grid.Row="2"
+                                                                Spacing="10"
+                                                                MinWidth="0">
                                                         <StackPanel Spacing="8">
                                                             <Grid>
                                                                 <Grid.ColumnDefinitions>
@@ -266,16 +347,6 @@
                                                                     Tag="{x:Bind Id}" />
                                                         </StackPanel>
                                                     </StackPanel>
-
-                                                    <Button Grid.Column="2"
-                                                            Style="{StaticResource DeleteIconButtonStyle}"
-                                                            Tag="{x:Bind Id}"
-                                                            Click="DeletePattern_Click"
-                                                            x:Uid="Time_Delete">
-                                                        <FontIcon Glyph="&#xE74D;"
-                                                                  FontSize="16"
-                                                                  FontFamily="{ThemeResource SymbolThemeFontFamily}" />
-                                                    </Button>
                                                 </Grid>
                                             </Border>
                                         </DataTemplate>

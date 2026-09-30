@@ -64,8 +64,25 @@
                 <Setter Property="VerticalContentAlignment" Value="Center" />
                 <Setter Property="Padding" Value="0" />
                 <Setter Property="Margin" Value="0,0,0,8" />
-                <Setter Property="MinHeight" Value="120" />
+                <!-- TimePicker 1段分を含むカード高さ -->
+                <Setter Property="MinHeight" Value="168" />
                 <Setter Property="MinWidth" Value="0" />
+            </Style>
+
+            <Style x:Key="EndTimeDashButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalAlignment" Value="Stretch" />
+                <Setter Property="MinHeight" Value="32" />
+                <Setter Property="Padding" Value="12,4" />
+            </Style>
+
+            <Style x:Key="ClearEndTimeButtonStyle" TargetType="Button" BasedOn="{StaticResource SubtleButtonStyle}">
+                <Setter Property="Width" Value="32" />
+                <Setter Property="Height" Value="32" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Margin" Value="4,0,0,0" />
             </Style>
 
             <Style x:Key="DeleteIconButtonStyle" TargetType="Button" BasedOn="{StaticResource SubtleButtonStyle}">

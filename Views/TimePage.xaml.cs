@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Windows.UI.Core;
 using WinUiShared;
@@ -24,6 +25,8 @@ namespace App1.Views
 
         private AppState? _state;
         private bool _isInitializing;
+        private bool _syncingTimePickers;
+        private bool _newHasEndTime;
         private readonly HashSet<Slider> _adjustingSliders = new();
         private readonly HashSet<Slider> _wheelAdjustingSliders = new();
         private readonly HashSet<Slider> _bindingSliders = new();
@@ -40,6 +43,7 @@ namespace App1.Views
             AttachSliderInteractions(NewIntensitySlider, SliderAdjustmentKind.Intensity);
             AttachSliderInteractions(NewColorTemperatureSlider, SliderAdjustmentKind.ColorTemperature);
             PatternsList.ContainerContentChanging += PatternsList_ContainerContentChanging;
+            UpdateNewEndTimeSlot();
         }
 
         private void ApplyFilterToggleLabels()
@@ -70,6 +74,7 @@ namespace App1.Views
 
             DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
             {
+                SyncPatternsListHostHeight();
                 _state?.RefreshGamma?.Invoke();
             });
         }
@@ -85,6 +90,44 @@ namespace App1.Views
             base.OnNavigatedFrom(e);
         }
 
+        private void ScheduleLeftPanel_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            SyncPatternsListHostHeight();
+        }
+
+        private void ScheduleLayoutGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            SyncPatternsListHostHeight();
+        }
+
+        /// <summary>
+        /// 横並び時は左パネル高さに合わせ、縦並び時は行の残り高さ内で一覧だけスクロールする。
+        /// </summary>
+        private void SyncPatternsListHostHeight()
+        {
+            if (PatternsListHost == null || ScheduleLeftPanel == null || ScheduleLayoutGrid == null)
+                return;
+
+            bool sideBySide = Grid.GetRow(ScheduleRightPanel) == 0
+                && Grid.GetColumn(ScheduleRightPanel) == 1;
+
+            if (sideBySide)
+            {
+                double leftHeight = ScheduleLeftPanel.ActualHeight;
+                if (leftHeight > 0)
+                    PatternsListHost.MaxHeight = leftHeight;
+                else
+                    PatternsListHost.ClearValue(FrameworkElement.MaxHeightProperty);
+                return;
+            }
+
+            double row1Height = ScheduleLayoutGrid.RowDefinitions[1].ActualHeight;
+            if (row1Height > 0)
+                PatternsListHost.MaxHeight = row1Height;
+            else
+                PatternsListHost.ClearValue(FrameworkElement.MaxHeightProperty);
+        }
+
         private void PatternsList_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
         {
             if (args.InRecycleQueue)
@@ -93,6 +136,8 @@ namespace App1.Views
                 {
                     foreach (var slider in FindDescendantSliders(recycledContainer))
                         DetachSliderInteractions(slider);
+                    foreach (var picker in FindDescendantTimePickers(recycledContainer))
+                        DetachTimePickerInteractions(picker);
                 }
 
                 return;
@@ -112,25 +157,42 @@ namespace App1.Views
                 AttachSliderInteractions(sliders[0], SliderAdjustmentKind.Intensity);
             if (sliders.Count >= 2)
                 AttachSliderInteractions(sliders[1], SliderAdjustmentKind.ColorTemperature);
+
+            if (args.Item is not Pattern pattern)
+                return;
+
+            var pickers = FindDescendantTimePickers(container);
+            if (pickers.Count >= 1)
+                AttachStartTimePicker(pickers[0], pattern);
+            if (pickers.Count >= 2)
+                AttachEndTimePicker(pickers[1], pattern);
         }
 
         private static List<Slider> FindDescendantSliders(DependencyObject root)
         {
             var sliders = new List<Slider>();
-            CollectDescendantSliders(root, sliders);
+            CollectDescendants(root, sliders);
             return sliders;
         }
 
-        private static void CollectDescendantSliders(DependencyObject root, List<Slider> sliders)
+        private static List<TimePicker> FindDescendantTimePickers(DependencyObject root)
+        {
+            var pickers = new List<TimePicker>();
+            CollectDescendants(root, pickers);
+            return pickers;
+        }
+
+        private static void CollectDescendants<T>(DependencyObject root, List<T> results)
+            where T : DependencyObject
         {
             int count = VisualTreeHelper.GetChildrenCount(root);
             for (int i = 0; i < count; i++)
             {
                 var child = VisualTreeHelper.GetChild(root, i);
-                if (child is Slider slider)
-                    sliders.Add(slider);
+                if (child is T match)
+                    results.Add(match);
                 else
-                    CollectDescendantSliders(child, sliders);
+                    CollectDescendants(child, results);
             }
         }
 
@@ -154,6 +216,46 @@ namespace App1.Views
             slider.PointerWheelChanged -= Slider_PointerWheelChanged;
             slider.ValueChanged -= AnySlider_ValueChanged;
             _sliderKinds.Remove(slider);
+        }
+
+        private void AttachStartTimePicker(TimePicker picker, Pattern pattern)
+        {
+            DetachTimePickerInteractions(picker);
+            picker.Tag = pattern.Id;
+            _syncingTimePickers = true;
+            try
+            {
+                picker.Time = ParseTimeOrDefault(pattern.Time);
+            }
+            finally
+            {
+                _syncingTimePickers = false;
+            }
+
+            picker.SelectedTimeChanged += PatternStartTimePicker_SelectedTimeChanged;
+        }
+
+        private void AttachEndTimePicker(TimePicker picker, Pattern pattern)
+        {
+            DetachTimePickerInteractions(picker);
+            picker.Tag = pattern.Id;
+            _syncingTimePickers = true;
+            try
+            {
+                picker.Time = ParseTimeOrDefault(pattern.EndTime);
+            }
+            finally
+            {
+                _syncingTimePickers = false;
+            }
+
+            picker.SelectedTimeChanged += PatternEndTimePicker_SelectedTimeChanged;
+        }
+
+        private void DetachTimePickerInteractions(TimePicker picker)
+        {
+            picker.SelectedTimeChanged -= PatternStartTimePicker_SelectedTimeChanged;
+            picker.SelectedTimeChanged -= PatternEndTimePicker_SelectedTimeChanged;
         }
 
         private void Slider_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -219,6 +321,7 @@ namespace App1.Views
             bool isEmpty = !_state.Patterns.Any();
             EmptyStateText.Visibility = isEmpty ? Visibility.Visible : Visibility.Collapsed;
             PatternsList.Visibility = isEmpty ? Visibility.Collapsed : Visibility.Visible;
+            SyncPatternsListHostHeight();
         }
 
         private void FilterToggle_Toggled(object sender, RoutedEventArgs e)
@@ -227,9 +330,23 @@ namespace App1.Views
             _state.IsFilterEnabled = FilterToggle.IsOn;
         }
 
-        private void HasEndTimeCheckBox_Changed(object sender, RoutedEventArgs e)
+        private void UpdateNewEndTimeSlot()
         {
-            NewEndTimePicker.IsEnabled = HasEndTimeCheckBox.IsChecked == true;
+            NewEndTimePicker.Visibility = _newHasEndTime ? Visibility.Visible : Visibility.Collapsed;
+            NewEndTimeDashButton.Visibility = _newHasEndTime ? Visibility.Collapsed : Visibility.Visible;
+            NewClearEndTimeButton.Visibility = _newHasEndTime ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void NewEndTimeDashButton_Click(object sender, RoutedEventArgs e)
+        {
+            _newHasEndTime = true;
+            UpdateNewEndTimeSlot();
+        }
+
+        private void NewClearEndTimeButton_Click(object sender, RoutedEventArgs e)
+        {
+            _newHasEndTime = false;
+            UpdateNewEndTimeSlot();
         }
 
         private void AddPattern_Click(object sender, RoutedEventArgs e)
@@ -237,28 +354,22 @@ namespace App1.Views
             if (_state == null) return;
 
             var newTime = NewTimePicker.Time;
-            string timeStr = $"{newTime.Hours:D2}:{newTime.Minutes:D2}";
+            string timeStr = FormatTime(newTime);
 
-            bool hasEndTime = HasEndTimeCheckBox.IsChecked == true;
             string endTimeStr = "00:00";
-            if (hasEndTime)
-            {
-                var et = NewEndTimePicker.Time;
-                endTimeStr = $"{et.Hours:D2}:{et.Minutes:D2}";
-            }
+            if (_newHasEndTime)
+                endTimeStr = FormatTime(NewEndTimePicker.Time);
 
             _state.Patterns.Add(new Pattern
             {
                 Time = timeStr,
-                HasEndTime = hasEndTime,
+                HasEndTime = _newHasEndTime,
                 EndTime = endTimeStr,
                 Intensity = (int)NewIntensitySlider.Value,
                 ColorTemperatureKelvin = (int)NewColorTemperatureSlider.Value
             });
 
-            var sorted = _state.Patterns.OrderBy(p => p.Time).ToList();
-            _state.Patterns.Clear();
-            foreach (var p in sorted) _state.Patterns.Add(p);
+            SortPatternsByStartTime();
 
             _state.PersistPatterns();
             _state.NotifyPatternsChanged();
@@ -276,6 +387,105 @@ namespace App1.Views
             _state.PersistPatterns();
             _state.NotifyPatternsChanged();
             UpdateEmptyState();
+        }
+
+        private void PatternStartTimePicker_SelectedTimeChanged(TimePicker sender, TimePickerSelectedValueChangedEventArgs args)
+        {
+            if (_syncingTimePickers || _isInitializing || _state == null)
+                return;
+
+            if (GetPatternFromTag(sender.Tag) is not Pattern pattern)
+                return;
+
+            string timeStr = FormatTime(sender.Time);
+            if (pattern.Time == timeStr)
+                return;
+
+            pattern.Time = timeStr;
+            SortPatternsByStartTime();
+            _state.PersistPatterns();
+            _state.NotifyPatternsChanged();
+        }
+
+        private void PatternEndTimePicker_SelectedTimeChanged(TimePicker sender, TimePickerSelectedValueChangedEventArgs args)
+        {
+            if (_syncingTimePickers || _isInitializing || _state == null)
+                return;
+
+            if (GetPatternFromTag(sender.Tag) is not Pattern pattern)
+                return;
+
+            if (!pattern.HasEndTime)
+                return;
+
+            string timeStr = FormatTime(sender.Time);
+            if (pattern.EndTime == timeStr)
+                return;
+
+            pattern.EndTime = timeStr;
+            _state.PersistPatterns();
+            _state.NotifyPatternsChanged();
+        }
+
+        private void PatternEndTimeDashButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_state == null || sender is not Button btn)
+                return;
+
+            if (GetPatternFromTag(btn.Tag) is not Pattern pattern)
+                return;
+
+            pattern.HasEndTime = true;
+            if (string.IsNullOrWhiteSpace(pattern.EndTime))
+                pattern.EndTime = "00:00";
+
+            _state.PersistPatterns();
+            _state.NotifyPatternsChanged();
+        }
+
+        private void PatternClearEndTimeButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_state == null || sender is not Button btn)
+                return;
+
+            if (GetPatternFromTag(btn.Tag) is not Pattern pattern)
+                return;
+
+            pattern.HasEndTime = false;
+            _state.PersistPatterns();
+            _state.NotifyPatternsChanged();
+        }
+
+        private void SortPatternsByStartTime()
+        {
+            if (_state == null) return;
+
+            var sorted = _state.Patterns.OrderBy(p => p.Time).ToList();
+            _state.Patterns.Clear();
+            foreach (var p in sorted)
+                _state.Patterns.Add(p);
+        }
+
+        private static string FormatTime(TimeSpan time) =>
+            $"{time.Hours:D2}:{time.Minutes:D2}";
+
+        private static TimeSpan ParseTimeOrDefault(string value)
+        {
+            if (TimeSpan.TryParseExact(value, @"hh\:mm", CultureInfo.InvariantCulture, out var time))
+                return time;
+
+            if (TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out time))
+                return time;
+
+            return TimeSpan.Zero;
+        }
+
+        private Pattern? GetPatternFromTag(object? tag)
+        {
+            if (_state == null || tag is not string id)
+                return null;
+
+            return _state.Patterns.FirstOrDefault(p => p.Id == id);
         }
 
         private void AnySlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
