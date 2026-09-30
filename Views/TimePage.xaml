@@ -115,6 +115,7 @@
                                     <TimePicker x:Name="NewTimePicker"
                                                 Grid.Column="2"
                                                 Margin="16,0,0,0"
+                                                Width="328"
                                                 ClockIdentifier="24HourClock" />
 
                                     <FontIcon Grid.Row="1"
@@ -128,6 +129,7 @@
                                                 Grid.Row="1"
                                                 Grid.Column="2"
                                                 Margin="16,0,0,0"
+                                                Width="328"
                                                 IsEnabled="False"
                                                 ClockIdentifier="24HourClock" />
                                 </Grid>
@@ -227,40 +229,41 @@
                                                     HorizontalAlignment="Stretch">
                                                 <Grid ColumnSpacing="10">
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="156" MinWidth="0" />
+                                                        <ColumnDefinition Width="248" MinWidth="0" />
                                                         <ColumnDefinition Width="*" MinWidth="0" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
 
                                                     <StackPanel VerticalAlignment="Center" Spacing="4">
                                                         <TextBlock x:Uid="Time_TimeRange" FontSize="12" Opacity="0.7" />
-                                                        <StackPanel Spacing="4">
-                                                            <Grid ColumnSpacing="12">
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="*" />
-                                                                    <ColumnDefinition Width="*" />
-                                                                </Grid.ColumnDefinitions>
-                                                                <ComboBox Style="{StaticResource PatternTimeComboBoxStyle}"
-                                                                          Tag="{x:Bind Id}" />
-                                                                <ComboBox Grid.Column="1"
-                                                                          Style="{StaticResource PatternTimeComboBoxStyle}"
-                                                                          Tag="{x:Bind Id}" />
-                                                            </Grid>
+                                                        <StackPanel Spacing="6">
+                                                            <TimePicker Style="{StaticResource PatternCardTimePickerStyle}"
+                                                                        DataContext="{x:Bind}" />
                                                             <TextBlock Text="～"
                                                                        FontSize="12"
                                                                        Opacity="0.7"
                                                                        HorizontalAlignment="Center" />
-                                                            <Grid ColumnSpacing="12">
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="*" />
-                                                                    <ColumnDefinition Width="*" />
-                                                                </Grid.ColumnDefinitions>
-                                                                <ComboBox Style="{StaticResource PatternTimeComboBoxStyle}"
-                                                                          Tag="{x:Bind Id}" />
-                                                                <ComboBox Grid.Column="1"
-                                                                          Style="{StaticResource PatternTimeComboBoxStyle}"
-                                                                          Tag="{x:Bind Id}" />
+                                                            <Grid>
+                                                                <TimePicker Style="{StaticResource PatternCardTimePickerStyle}"
+                                                                            Visibility="{x:Bind EndTimePickerVisibility, Mode=OneWay}"
+                                                                            DataContext="{x:Bind}" />
+                                                                <Button x:Uid="Time_EndNone"
+                                                                        Style="{StaticResource EndTimeDashButtonStyle}"
+                                                                        Tag="{x:Bind Id}"
+                                                                        Visibility="{x:Bind EndTimeDashVisibility, Mode=OneWay}"
+                                                                        Click="PatternEndTimeDashButton_Click"
+                                                                        Content="--" />
                                                             </Grid>
+                                                            <Button Style="{StaticResource ClearEndTimeButtonStyle}"
+                                                                    Tag="{x:Bind Id}"
+                                                                    Visibility="{x:Bind ClearEndTimeVisibility, Mode=OneWay}"
+                                                                    Click="PatternClearEndTimeButton_Click"
+                                                                    x:Uid="Time_ClearEnd"
+                                                                    HorizontalAlignment="Right">
+                                                                <FontIcon Glyph="&#xE711;"
+                                                                          FontSize="12"
+                                                                          FontFamily="{ThemeResource SymbolThemeFontFamily}" />
+                                                            </Button>
                                                         </StackPanel>
                                                     </StackPanel>
 
