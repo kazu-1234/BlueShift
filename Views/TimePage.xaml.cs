@@ -567,38 +567,37 @@ namespace App1.Views
             _state.NotifyPatternsChanged();
         }
 
-        private void PatternEndTimeDashButton_Click(object sender, RoutedEventArgs e)
+        private void PatternHasEndTimeCheckBox_Changed(object sender, RoutedEventArgs e)
         {
-            if (_state == null || sender is not Button btn || btn.Tag is not string id)
+            if (_isInitializing || _state == null || sender is not CheckBox checkBox || checkBox.Tag is not string id)
                 return;
 
             var pattern = _state.Patterns.FirstOrDefault(p => p.Id == id);
-            if (pattern == null || pattern.HasEndTime)
+            if (pattern == null)
                 return;
 
-            pattern.EndTime = pattern.Time;
-            pattern.HasEndTime = true;
-            _state.PersistPatterns();
-            _state.NotifyPatternsChanged();
+            bool wantEnd = checkBox.IsChecked == true;
+            if (pattern.HasEndTime == wantEnd)
+                return;
 
-            if (FindOwningListViewItem(btn) is ListViewItem container)
+            if (wantEnd)
             {
-                var pickers = FindDescendantTimePickers(container);
-                if (pickers.Count >= 2)
-                    SyncTimePickerFromPattern(pickers[1], pattern, isEnd: true);
+                if (string.IsNullOrWhiteSpace(pattern.EndTime))
+                    pattern.EndTime = pattern.Time;
+                pattern.HasEndTime = true;
+
+                if (FindOwningListViewItem(checkBox) is ListViewItem container)
+                {
+                    var pickers = FindDescendantTimePickers(container);
+                    if (pickers.Count >= 2)
+                        SyncTimePickerFromPattern(pickers[1], pattern, isEnd: true);
+                }
             }
-        }
+            else
+            {
+                pattern.HasEndTime = false;
+            }
 
-        private void PatternClearEndTimeButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (_state == null || sender is not Button btn || btn.Tag is not string id)
-                return;
-
-            var pattern = _state.Patterns.FirstOrDefault(p => p.Id == id);
-            if (pattern == null || !pattern.HasEndTime)
-                return;
-
-            pattern.HasEndTime = false;
             _state.PersistPatterns();
             _state.NotifyPatternsChanged();
         }

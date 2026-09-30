@@ -7,7 +7,6 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using Windows.Foundation;
 using Windows.UI;
 
@@ -15,12 +14,11 @@ namespace App1.Views;
 
 /// <summary>
 /// TimePicker フライアウトの時・分選択ハイライトが境目で重なり暗い筋になるのを防ぐ。
-/// 列間隔を広げ、各列とハイライトを Clip して隣列へはみ出さないようにする。
+/// 列間隔を広げ、横断ハイライトを1本に揃える（または列ごとに厳密 Clip）。
 /// </summary>
 internal static class TimePickerFlyoutFixHelper
 {
     private const double ColumnGap = 14;
-    private const double ClipInset = 1;
 
     private static readonly HashSet<TimePicker> Attached = [];
     private static readonly HashSet<FrameworkElement> SizeHooked = [];
@@ -92,8 +90,7 @@ internal static class TimePickerFlyoutFixHelper
                 continue;
 
             WidenColumnGap(popup.Child);
-            SeparateAndClipColumns(popup.Child);
-            ClipHighlightElements(popup.Child);
+            UnifyOrSeparateHighlights(popup.Child);
         }
     }
 
@@ -111,69 +108,55 @@ internal static class TimePickerFlyoutFixHelper
             spacing.Width = Math.Max(spacing.Width, ColumnGap);
             spacing.MinWidth = ColumnGap;
             if (spacing is Rectangle rect)
-                rect.Opacity = 0; // 区切り線はギャップで足りる。重なりの視覚ノイズを減らす
+                rect.Opacity = 0;
         }
 
-        // PickerHost を含む Grid の中間 Auto 列を広げる
         if (FindDescendantByName(root, "FirstPickerHost") is FrameworkElement firstHost
             && VisualTreeHelper.GetParent(firstHost) is Grid hostGrid
             && hostGrid.ColumnDefinitions.Count >= 3)
         {
-            // 典型: Col0=時*, Col1=間隔 Auto, Col2=分*
             ColumnDefinition gapCol = hostGrid.ColumnDefinitions[1];
             gapCol.Width = new GridLength(ColumnGap);
             gapCol.MinWidth = ColumnGap;
         }
     }
 
-    private static void SeparateAndClipColumns(DependencyObject root)
+    private static void UnifyOrSeparateHighlights(DependencyObject root)
     {
         var columns = ResolvePickerColumns(root);
-        if (columns.Count < 2)
-            return;
+        FrameworkElement? sharedHighlight = FindDescendantByName(root, "HighlightRect");
 
-        double halfGap = ColumnGap / 2.0;
-            columns[0].Margin = new Thickness(0, 0, halfGap, 0);
-            columns[1].Margin = new Thickness(halfGap, 0, 0, 0);
-
-            for (int i = 0; i < Math.Min(2, columns.Count); i++)
-            {
-                FrameworkElement column = columns[i];
-                ApplyInsetClip(column);
-                HookSizeChanged(column);
-                ClipHighlightDescendants(column);
-            }
-
-            try
-            {
-                string path = System.IO.Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "BlueShift",
-                    "timepicker-fix.txt");
-                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
-                File.AppendAllText(
-                    path,
-                    $"{DateTime.Now:HH:mm:ss.fff} columns={columns.Count} gap={ColumnGap} w0={columns[0].ActualWidth:F1} w1={columns[1].ActualWidth:F1}{Environment.NewLine}");
-            }
-            catch
-            {
-                // ignore
-            }
-        }
-
-    private static void ClipHighlightElements(DependencyObject root)
-    {
-        if (FindDescendantByName(root, "HighlightRect") is FrameworkElement sharedHighlight)
+        if (sharedHighlight != null)
         {
-            // 旧テンプレの横断ハイライトは列またぎで良いが、幅は親に合わせる
-            ApplyInsetClip(sharedHighlight);
-            HookSizeChanged(sharedHighlight);
+            // 横断ハイライトを1本残し、列内の別アクセント塗りを消して二重描画を防ぐ
+            sharedHighlight.Opacity = 1;
+            sharedHighlight.ClearValue(UIElement.ClipProperty);
+            sharedHighlight.ClearValue(FrameworkElement.MaxWidthProperty);
+
+            foreach (FrameworkElement column in columns)
+                HideNestedAccentHighlights(column, except: sharedHighlight);
+
+            // Host 外に共有ハイライトがある場合も、列内以外の重複アクセントを消す
+            HideNestedAccentHighlights(root, except: sharedHighlight);
+            return;
         }
 
-        ClipHighlightDescendants(root);
+        // 共有ハイライトが無い場合: 各列を厳密 Clip し対面側に余白
+        for (int i = 0; i < columns.Count; i++)
+        {
+            FrameworkElement column = columns[i];
+            double facingPad = 2;
+            if (i == 0)
+                column.Margin = new Thickness(0, 0, facingPad, 0);
+            else if (i == 1)
+                column.Margin = new Thickness(facingPad, 0, 0, 0);
+
+            ApplyExactClip(column);
+            HookSizeChanged(column);
+        }
     }
 
-    private static void ClipHighlightDescendants(DependencyObject root)
+    private static void HideNestedAccentHighlights(DependencyObject root, FrameworkElement except)
     {
         int count = VisualTreeHelper.GetChildrenCount(root);
         for (int i = 0; i < count; i++)
@@ -181,35 +164,28 @@ internal static class TimePickerFlyoutFixHelper
             DependencyObject child = VisualTreeHelper.GetChild(root, i);
             if (child is FrameworkElement fe)
             {
-                string name = fe.Name ?? string.Empty;
-                string typeName = fe.GetType().Name;
-                bool isHighlight = name.Contains("Highlight", StringComparison.OrdinalIgnoreCase)
-                    || typeName.Contains("Highlight", StringComparison.OrdinalIgnoreCase)
-                    || IsAccentFilledShape(fe);
+                if (!ReferenceEquals(fe, except) && IsAccentHighlight(fe))
+                    fe.Opacity = 0;
 
-                if (isHighlight)
-                {
-                    // 端で隣列と重ならないよう少し内側に縮める
-                    if (fe.ActualWidth > ColumnGap)
-                        fe.Margin = new Thickness(ClipInset, fe.Margin.Top, ClipInset, fe.Margin.Bottom);
-
-                    ApplyInsetClip(fe);
-                    HookSizeChanged(fe);
-
-                    if (fe.Parent is FrameworkElement parent && parent.ActualWidth > 0)
-                    {
-                        fe.MaxWidth = Math.Max(0, parent.ActualWidth - ClipInset * 2);
-                        ApplyInsetClip(parent);
-                    }
-                }
+                HideNestedAccentHighlights(fe, except);
             }
-
-            ClipHighlightDescendants(child);
+            else
+            {
+                HideNestedAccentHighlights(child, except);
+            }
         }
     }
 
-    private static bool IsAccentFilledShape(FrameworkElement fe)
+    private static bool IsAccentHighlight(FrameworkElement fe)
     {
+        string name = fe.Name ?? string.Empty;
+        string typeName = fe.GetType().Name;
+        if (name.Contains("Highlight", StringComparison.OrdinalIgnoreCase)
+            || typeName.Contains("Highlight", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
         Brush? fill = fe switch
         {
             Shape shape => shape.Fill,
@@ -221,7 +197,6 @@ internal static class TimePickerFlyoutFixHelper
             return false;
 
         Color c = solid.Color;
-        // アクセント青系の半透明ハイライトを想定
         return c.A > 40 && c.B > c.R + 20 && c.B > c.G;
     }
 
@@ -247,20 +222,19 @@ internal static class TimePickerFlyoutFixHelper
         if (!SizeHooked.Add(element))
             return;
 
-        element.SizeChanged += (_, _) => ApplyInsetClip(element);
+        element.SizeChanged += (_, _) => ApplyExactClip(element);
     }
 
-    private static void ApplyInsetClip(FrameworkElement element)
+    private static void ApplyExactClip(FrameworkElement element)
     {
         double w = element.ActualWidth;
         double h = element.ActualHeight;
         if (w <= 0 || h <= 0)
             return;
 
-        double inset = Math.Min(ClipInset, w / 4);
         element.Clip = new RectangleGeometry
         {
-            Rect = new Rect(inset, 0, Math.Max(0, w - inset * 2), h)
+            Rect = new Rect(0, 0, w, h)
         };
     }
 
