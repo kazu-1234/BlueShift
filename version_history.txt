@@ -75,6 +75,7 @@ v1.0.37 - 更新時�E %AppData% の設定を維持。アンインスト�Eル
 - スリープ復帰後にブルーライトが再適用されない問題を修正（GUID_CONSOLE_DISPLAY_STATE 誤記で SystemEventWindow が初期化失敗していた）
 - 復帰時に DispatcherTimer（スケジュール／ウォッチドッグ）を明示再始動
 - バージョンを v1.0.52 に更新
+
 [v1.1.5] - 2026/10/02
 - 時刻ページのスケジュール編集を TimePicker に統一（ホイール操作対応）
 - TimePicker フライアウトの左端濃色（二重塗り）を修正
