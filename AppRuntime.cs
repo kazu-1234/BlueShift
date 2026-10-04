@@ -704,21 +704,7 @@ namespace App1
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
 
-        internal static void AppendLifetimeLog(string reason)
-        {
-            try
-            {
-                string dir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "BlueShift");
-                Directory.CreateDirectory(dir);
-                File.AppendAllText(
-                    Path.Combine(dir, "lifetime.log"),
-                    $"{DateTime.UtcNow:O} {reason}{Environment.NewLine}");
-            }
-            catch
-            {
-            }
-        }
+        internal static void AppendLifetimeLog(string reason) =>
+            LifetimeLog.Append("BlueShift", reason);
     }
 }
