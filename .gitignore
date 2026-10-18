@@ -26,3 +26,6 @@ Desktop.ini
 
 # IDE / エディタ（リポジトリ非公開）
 .cursor/
+
+# ローカル専用の作業履歴（push しない）
+version_history.txt
