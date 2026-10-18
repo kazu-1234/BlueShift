@@ -13,7 +13,7 @@ using WinUiShared;
 
 namespace App1
 {
-    public sealed partial class MainWindow : Window
+    public sealed partial class MainWindow : Window, IAppMainWindow
     {
         private const int DefaultClientWidth = 960;
         private const int DefaultClientHeight = 680;
@@ -62,7 +62,7 @@ namespace App1
 
         public void NavigateToPageTag(string tag) => NavigateToPage(tag, force: false, suppressTransition: true);
 
-        internal void SaveWindowBoundsFromRuntime()
+        public void SaveWindowBoundsFromRuntime()
         {
             SaveWindowBounds();
         }
@@ -133,28 +133,11 @@ namespace App1
             SaveWindowBounds();
             _runtime.OnMainWindowClosing(this);
 
-#if DEBUG
-            if (Debugger.IsAttached)
-            {
-                args.Cancel = false;
-                Closed += MainWindow_ClosedDebugExit;
-                AppWindow.Closing -= AppWindow_Closing;
-                AppWindow.Changed -= AppWindow_Changed;
-                return;
-            }
-#endif
-
             // × は本当に Close（Hide しない）。プロセス・トレイ・ガンマは AppRuntime が継続
+            // （デバッグ実行中はトレイが無いので、閉じた後の終了は AppRuntimeBase が行う）
             args.Cancel = false;
             AppWindow.Closing -= AppWindow_Closing;
             AppWindow.Changed -= AppWindow_Changed;
-        }
-
-        private void MainWindow_ClosedDebugExit(object sender, WindowEventArgs e)
-        {
-            Closed -= MainWindow_ClosedDebugExit;
-            if (!_runtime.IsExitingProcess)
-                _runtime.ExitApplication("debug-window-close");
         }
 
         private void NavView_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)

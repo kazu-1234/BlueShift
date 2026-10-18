@@ -27,7 +27,7 @@ namespace App1.Views
             if (_state == null) return;
 
             _isInitializing = true;
-            VersionText.Text = Strings.Format("Version_Format", UpdateChecker.CurrentVersion);
+            VersionText.Text = Strings.Format("Version_Format", AppUpdate.CurrentVersion);
             RefreshLastUpdateCheckText();
             AutoUpdateToggle.IsOn = _state.Settings.AutoCheckUpdateOnStartup;
 
@@ -51,7 +51,7 @@ namespace App1.Views
 
         private void RefreshLastUpdateCheckText()
         {
-            LastUpdateCheckText.Text = UpdateFlowService.FormatLastUpdateCheckDisplay(
+            LastUpdateCheckText.Text = AppUpdate.FormatLastUpdateCheckDisplay(
                 _state?.Settings.LastUpdateCheckUtc);
         }
 
@@ -82,7 +82,7 @@ namespace App1.Views
             InstallUpdateCard.Visibility = Visibility.Collapsed;
             _lastResult = null;
 
-            UpdateCheckResult result = await UpdateFlowService.CheckAndRecordAsync(_state.Settings);
+            UpdateCheckResult result = await AppUpdate.CheckAndRecordAsync(_state.Settings);
             _lastResult = result;
             RefreshLastUpdateCheckText();
 
@@ -135,7 +135,7 @@ namespace App1.Views
             try
             {
                 var progress = new Progress<string>(msg => InstallStatusText.Text = msg);
-                string message = await UpdateInstallerService.DownloadAndInstallAsync(
+                string message = await AppUpdate.DownloadAndInstallAsync(
                     _lastResult.DownloadUrl,
                     _lastResult.AssetFileName,
                     progress);

@@ -1,8 +1,9 @@
-// v1.1.6
+// v1.2.0
 
 using Microsoft.UI.Xaml;
 using System;
 using System.Diagnostics;
+using WinUiShared;
 
 namespace App1
 {
@@ -37,21 +38,13 @@ namespace App1
 
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
-            UpdateChecker.LatestReleaseApiUrl =
-                "https://api.github.com/repos/kazu-1234/BlueShift/releases/latest";
-
-            if (HasCommandLineArg("--cleanup-autostart"))
-            {
-                StartupManager.CleanupAutostartOnly();
-                Exit();
-                return;
-            }
+            // --cleanup-autostart / --sync-autostart は Program.Main（WinUI 起動前）で処理済み
 
             var settings = Settings.Load();
-            bool launchInBackground = HasCommandLineArg("--background");
+            bool launchInBackground = AppBootstrap.HasCommandLineArg(AppBootstrap.BackgroundArg);
             bool requestInteractiveShow = !launchInBackground;
 
-            if (!SingleInstanceManager.TryBecomePrimaryInstance(requestInteractiveShow))
+            if (!SingleInstance.TryBecomePrimaryInstance(requestInteractiveShow))
             {
                 Exit();
                 return;
@@ -67,7 +60,8 @@ namespace App1
 
             try
             {
-                _runtime = new AppRuntime(this);
+                // 起動判定で読んだ設定をそのまま渡す（以前は AppRuntime 内で読み直していた。同じ内容の 2 個目を作らない）
+                _runtime = new AppRuntime(this, settings);
                 _runtime.Start(launchInBackground, requestInteractiveShow);
             }
             catch (Exception ex)
@@ -75,17 +69,6 @@ namespace App1
                 ReportStartupError(ex.ToString());
                 throw;
             }
-        }
-
-        private static bool HasCommandLineArg(string arg)
-        {
-            foreach (string item in Environment.GetCommandLineArgs())
-            {
-                if (string.Equals(item, arg, StringComparison.OrdinalIgnoreCase))
-                    return true;
-            }
-
-            return false;
         }
     }
 }

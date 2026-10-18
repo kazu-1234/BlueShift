@@ -16,12 +16,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <WindowsPackageType>None</WindowsPackageType>
     <ApplicationDefaultLanguage>ja-JP</ApplicationDefaultLanguage>
-    <Version>1.1.6</Version>
+    <Version>1.2.0</Version>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <DefineConstants>DISABLE_XAML_GENERATED_MAIN;DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION</DefineConstants>
   </PropertyGroup>
 
-  <!-- Debug ビルド前に常駐�Eロセスを終亁E�E��E�、exe ロチE�E��E�によるビルド失敗を防ぁE-->
+  <!-- Debug ビルド前に常駐プロセスを終了し、exe ロックによるビルド失敗を防ぐ -->
   <Target Name="StopRunningInstanceBeforeBuild" BeforeTargets="PrepareForBuild" Condition="'$(Configuration)' == 'Debug'">
     <Exec Command="taskkill /F /IM $(AssemblyName).exe /T 2&gt;nul" IgnoreExitCode="true" />
   </Target>
@@ -40,7 +40,7 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="TaskScheduler" Version="2.12.2" />
 
-    <!-- CommunityToolkit 経由のメタパッケージ賁E�E��E�を無効匁E-->
+    <!-- CommunityToolkit 経由のメタパッケージ資産を無効化 -->
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.0.1">
       <ExcludeAssets>all</ExcludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -48,7 +48,7 @@
     <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.0.12" />
     <PackageReference Include="Microsoft.WindowsAppSDK.DWrite" Version="2.0.26041403" />
 
-    <!-- AI/ML/Widgets は明示皁E�E��E�賁E�E��E�を落とす（未使用�E�E�E�E-->
+    <!-- AI/ML/Widgets は明示的に資産を落とす（未使用） -->
     <PackageReference Include="Microsoft.WindowsAppSDK.ML" Version="2.0.300">
       <ExcludeAssets>all</ExcludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -72,7 +72,7 @@
 
   <!--
     unpackaged の publish で BlueShift.pri / .xbf が落ちると
-    Microsoft.UI.Xaml.dll で 0xc000027b クラチE�E��E�ュするため明示同梱する、E  -->
+    Microsoft.UI.Xaml.dll で 0xc000027b クラッシュするため明示同梱する。 -->
   <Target Name="IncludeXamlResourcesForPublish" AfterTargets="ComputeFilesToPublish">
     <PropertyGroup>
       <_AppPriFile>$(ProjectDir)$(OutputPath)$(AssemblyName).pri</_AppPriFile>

@@ -1,7 +1,5 @@
-using Microsoft.UI.Dispatching;
-using Microsoft.UI.Xaml;
 using System;
-using System.Threading;
+using WinUiShared;
 
 namespace App1
 {
@@ -10,53 +8,33 @@ namespace App1
         [STAThread]
         static void Main(string[] args)
         {
-            // インストーラ等から既存プロセスへ終了依頼（WinUI を起動しない）。
-            if (HasArg(args, "--exit"))
-            {
-                SingleInstanceManager.SignalExit();
-                // 終了完了を待つ（ファイルロック解除のため）
-                Thread.Sleep(1500);
-                return;
-            }
+            // --exit（インストーラからの終了依頼）と WinUI の起動は共通処理（WinUiShared.AppBootstrap）
+            AppBootstrap.RunMain(args, AppSetup.Profile, HandlePreLaunchArgs, () => new App());
+        }
 
+        /// <summary>WinUI を起動せずに済む引数を処理する。処理したら true（そのまま終了）。</summary>
+        private static bool HandlePreLaunchArgs(string[] args)
+        {
             // WinUI を起動せず、画面のガンマだけ即座に戻す。
-            if (HasArg(args, "--reset-gamma"))
+            if (AppBootstrap.HasArg(args, "--reset-gamma"))
             {
                 GammaController.ResetGamma();
-                return;
+                return true;
             }
 
             // 自動起動登録だけ削除して終了（アプリ削除時の掃除用）。
-            if (HasArg(args, "--cleanup-autostart"))
+            if (AppBootstrap.HasArg(args, AppBootstrap.CleanupAutostartArg))
             {
                 StartupManager.CleanupAutostartOnly();
-                return;
+                return true;
             }
 
             // インストール直後など、設定に合わせてログオンタスクを現行 exe へ同期して終了。
-            if (HasArg(args, "--sync-autostart"))
+            if (AppBootstrap.HasArg(args, AppBootstrap.SyncAutostartArg))
             {
                 var settings = Settings.Load();
                 StartupManager.SyncAutostartWithSettings(settings.AutoStart, settings.UseLogonTask);
-                return;
-            }
-
-            WinRT.ComWrappersSupport.InitializeComWrappers();
-            Application.Start(_ =>
-            {
-                var context = new DispatcherQueueSynchronizationContext(
-                    DispatcherQueue.GetForCurrentThread());
-                SynchronizationContext.SetSynchronizationContext(context);
-                new App();
-            });
-        }
-
-        private static bool HasArg(string[] args, string arg)
-        {
-            foreach (string item in args)
-            {
-                if (string.Equals(item, arg, StringComparison.OrdinalIgnoreCase))
-                    return true;
+                return true;
             }
 
             return false;

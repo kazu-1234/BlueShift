@@ -1,12 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Newtonsoft.Json;
 using WinUiShared;
 
 namespace App1
 {
-    public class Settings : IUpdateSettings
+    public class Settings : IAppHostSettings
     {
         /// <summary>デフォルトはシステム連動。</summary>
         public AppThemePreference ThemePreference { get; set; } = AppThemePreference.System;
@@ -41,7 +40,7 @@ namespace App1
         public DateTime? LastUpdateCheckUtc { get; set; }
 
         private static string SettingsFilePath =>
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BlueShift", "settings.json");
+            Path.Combine(AppSetup.Profile.AppDataDirectory, "settings.json");
 
         private static string LegacySettingsFilePath =>
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "App1", "settings.json");
@@ -50,21 +49,13 @@ namespace App1
         {
             MigrateSettingsFileIfNeeded();
 
-            try
-            {
-                if (File.Exists(SettingsFilePath))
-                {
-                    string json = File.ReadAllText(SettingsFilePath);
-                    var settings = JsonConvert.DeserializeObject<Settings>(json);
-                    if (settings == null)
-                        return new Settings();
+            // 読み込みは共通処理（壊れていれば 1 つ前の保存版 .bak で救済。どちらも無ければ null）
+            var settings = JsonSettingsFile.Load<Settings>(SettingsFilePath);
+            if (settings == null)
+                return new Settings();
 
-                    settings.NormalizePatterns();
-                    return settings;
-                }
-            }
-            catch { }
-            return new Settings();
+            settings.NormalizePatterns();
+            return settings;
         }
 
         private static void MigrateSettingsFileIfNeeded()
@@ -83,20 +74,8 @@ namespace App1
             catch { }
         }
 
-        public void Save()
-        {
-            try
-            {
-                var dir = Path.GetDirectoryName(SettingsFilePath);
-                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                {
-                    Directory.CreateDirectory(dir);
-                }
-                string json = JsonConvert.SerializeObject(this, Formatting.Indented);
-                File.WriteAllText(SettingsFilePath, json);
-            }
-            catch { }
-        }
+        /// <summary>保存（一時ファイル → 差し替えで、途中で落ちても壊れない）。失敗は無視する。</summary>
+        public void Save() => JsonSettingsFile.Save(SettingsFilePath, this);
 
         /// <summary>旧設定ファイルに色温度が無い場合などの正規化。</summary>
         public void NormalizePatterns()
