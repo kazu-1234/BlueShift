@@ -63,7 +63,7 @@ namespace App1.Views
             if (preference == _state.Settings.ThemePreference)
                 return;
 
-            ThemeService.SetPreference(preference, save: false);
+            ThemeService.SetPreference(preference);
             _state.Settings.ThemePreference = preference;
             _state.Settings.Save();
         }

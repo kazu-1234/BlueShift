@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Windows.Graphics;
+using WinUiShared;
 
 namespace App1
 {
