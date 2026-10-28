@@ -4,10 +4,10 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:local="using:App1"
-    xmlns:views="using:App1.Views"
+    xmlns:shared="using:WinUiShared"
     HorizontalAlignment="Stretch"
     VerticalAlignment="Stretch">
-    <views:PageScrollHost>
+    <shared:PageScrollHost>
         <Grid x:Name="ContentArea">
             <StackPanel Style="{StaticResource PageBaseStackPanelStyle}">
                 <TextBlock x:Uid="Page_Time" Style="{StaticResource PageTitleTextStyle}" />
@@ -318,5 +318,5 @@
                 </Grid>
             </StackPanel>
         </Grid>
-    </views:PageScrollHost>
+    </shared:PageScrollHost>
 </Page>

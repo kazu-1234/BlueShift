@@ -1,4 +1,4 @@
-// v1.3.0
+// v1.3.1
 
 using Microsoft.UI.Xaml;
 using System;
@@ -20,15 +20,8 @@ namespace App1
             InitializeComponent();
             // × で MainWindow を破棄してもトレイ常駐を続ける（明示 Exit まで終了しない）
             DispatcherShutdownMode = DispatcherShutdownMode.OnExplicitShutdown;
-            UnhandledException += App_UnhandledException;
-        }
-
-        private void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
-        {
-            Debug.WriteLine(e.Exception);
-            ReportStartupError(e.Exception?.Message ?? "Unknown error");
-            AppRuntime.AppendLifetimeLog($"unhandled {e.Exception?.GetType().Name}: {e.Exception?.Message}");
-            e.Handled = true;
+            // 未処理例外は全アプリ共通の処理へ（lifetime.log に記録し、落とさずに続ける）
+            UnhandledException += (_, e) => AppBootstrap.HandleUnhandledException(e);
         }
 
         internal static void ReportStartupError(string message)
