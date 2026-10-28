@@ -43,6 +43,7 @@ namespace App1.Views
             AutoStartToggle.IsOn = _state.Settings.AutoStart;
             AutostartTaskOnlyCheckBox.IsChecked = _state.Settings.UseLogonTask;
             HideTrayIconCheckBox.IsChecked = _state.Settings.HideTrayIcon;
+            ShowStartupNotificationCheckBox.IsChecked = _state.Settings.ShowStartupNotification;
             AutoStartExpander.IsExpanded = true;
             RefreshAutostartInfo();
             _isInitializing = false;
@@ -156,6 +157,20 @@ namespace App1.Views
             _state.Settings.HideTrayIcon = hide;
             _state.Settings.Save();
             _state.ApplyTrayIconVisibility?.Invoke();
+        }
+
+        /// <summary>起動時の「常駐準備完了」通知の ON/OFF を保存する（次回起動から反映）。</summary>
+        private void ShowStartupNotificationCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializing || _state == null)
+                return;
+
+            bool show = ShowStartupNotificationCheckBox.IsChecked == true;
+            if (show == _state.Settings.ShowStartupNotification)
+                return;
+
+            _state.Settings.ShowStartupNotification = show;
+            _state.Settings.Save();
         }
     }
 }

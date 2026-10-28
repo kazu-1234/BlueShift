@@ -202,6 +202,9 @@
   <data name="Settings_HideTrayIcon.Content" xml:space="preserve">
     <value>Hide tray icon</value>
   </data>
+  <data name="Settings_ShowStartupNotification.Content" xml:space="preserve">
+    <value>Show a notification at startup</value>
+  </data>
   <data name="Info_SectionUpdate.Text" xml:space="preserve">
     <value>Updates</value>
   </data>

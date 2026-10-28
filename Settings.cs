@@ -15,6 +15,9 @@ namespace App1
         /// <summary>true のときタスクトレイアイコンを表示しない。</summary>
         public bool HideTrayIcon { get; set; }
 
+        /// <summary>true のとき起動後に「常駐準備完了」のトレイ通知を出す（キーが無い既存設定は true＝従来どおり）。</summary>
+        public bool ShowStartupNotification { get; set; } = true;
+
         /// <summary>true のときログオンタスク、false のときレジストリ Run（スタートアップ）。</summary>
         public bool UseLogonTask { get; set; } = true;
 

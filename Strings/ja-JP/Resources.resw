@@ -202,6 +202,9 @@
   <data name="Settings_HideTrayIcon.Content" xml:space="preserve">
     <value>トレイアイコンの非表示</value>
   </data>
+  <data name="Settings_ShowStartupNotification.Content" xml:space="preserve">
+    <value>起動時に通知を表示する</value>
+  </data>
   <data name="Info_SectionUpdate.Text" xml:space="preserve">
     <value>アップデート</value>
   </data>
