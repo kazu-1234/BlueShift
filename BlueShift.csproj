@@ -67,7 +67,11 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\WinUiAppTemplate\Shared\WinUiShared.csproj" />
+    <!-- 共通基盤 WinUiShared は Template（..\WinUiAppTemplate\Shared）が正本。リポ単体でビルドできるようにコピーを Shared\ に同梱する。
+         直すときは Template 側を直し、scripts\sync-shared.ps1 で同期する（Shared\ を直接書き換えない） -->
+    <Compile Remove="Shared\**\*" />
+    <None Remove="Shared\**\*" />
+    <ProjectReference Include="Shared\WinUiShared.csproj" />
   </ItemGroup>
 
   <!--

@@ -5,7 +5,7 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BlueShift", "BlueShift.csproj", "{0128BF0D-C0F7-4272-BF86-D8AD54461A22}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WinUiShared", "..\WinUiAppTemplate\Shared\WinUiShared.csproj", "{B7E4C1A0-8D2F-4E91-9C3A-1F6B0A2D4E88}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WinUiShared", "Shared\WinUiShared.csproj", "{B7E4C1A0-8D2F-4E91-9C3A-1F6B0A2D4E88}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
