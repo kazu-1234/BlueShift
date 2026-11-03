@@ -15,24 +15,34 @@ public sealed class ThemeComboBoxBinder
     private readonly Func<AppThemePreference> _get;
     private readonly Action<AppThemePreference> _set;
     private readonly Action _save;
+    private readonly string _keyPrefix;
     private bool _isInitializing;
+
+    /// <summary>項目の文言キーの既定の頭（Settings_Theme_System / _Light / _Dark）。</summary>
+    public const string DefaultKeyPrefix = "Settings_Theme_";
 
     /// <param name="box">テーマの ComboBox（XAML 側に SelectionChanged は書かない）。</param>
     /// <param name="get">今の設定値を返す。</param>
     /// <param name="set">設定値を書き換える（保存は save で行う）。</param>
     /// <param name="save">設定を保存する。</param>
     /// <param name="fitToSelectedText">選択中の文言に合わせて幅を伸縮させるか（ほとんどのアプリは true）。</param>
+    /// <param name="keyPrefix">
+    /// 項目の文言キーの頭。後ろに System / Light / Dark を付けて .resw から引く
+    /// （SmartPowerManager は "Theme_"。表示を変えないよう、アプリが今使っているキーを渡す）。
+    /// </param>
     public ThemeComboBoxBinder(
         ComboBox box,
         Func<AppThemePreference> get,
         Action<AppThemePreference> set,
         Action save,
-        bool fitToSelectedText = true)
+        bool fitToSelectedText = true,
+        string keyPrefix = DefaultKeyPrefix)
     {
         _box = box;
         _get = get;
         _set = set;
         _save = save;
+        _keyPrefix = keyPrefix;
         if (fitToSelectedText)
             CompactComboBoxHelper.AttachFitToSelectedText(box);
         box.SelectionChanged += Box_SelectionChanged;
@@ -43,9 +53,9 @@ public sealed class ThemeComboBoxBinder
     {
         _isInitializing = true;
         _box.Items.Clear();
-        _box.Items.Add(AppHost.GetString("Settings_Theme_System"));
-        _box.Items.Add(AppHost.GetString("Settings_Theme_Light"));
-        _box.Items.Add(AppHost.GetString("Settings_Theme_Dark"));
+        _box.Items.Add(AppHost.GetString(_keyPrefix + "System"));
+        _box.Items.Add(AppHost.GetString(_keyPrefix + "Light"));
+        _box.Items.Add(AppHost.GetString(_keyPrefix + "Dark"));
         _box.SelectedIndex = ToIndex(_get());
         _isInitializing = false;
     }
