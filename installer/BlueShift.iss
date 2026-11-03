@@ -2,14 +2,28 @@
 ; Usage: scripts\build-installer.ps1
 
 #define MyAppName "BlueShift"
-#define MyAppVersion "1.3.4"
+; 版は csproj の <Version> だけが正本。scripts\build-installer.ps1 が ISCC に /DMyAppVersion=版 で渡す
+#ifndef MyAppVersion
+  #error MyAppVersion がありません。scripts\build-installer.ps1 から作成してください。
+#endif
 #define MyAppPublisher "kazu-1234"
 #define MyAppURL "https://github.com/kazu-1234/BlueShift"
 #define MyAppExeName "BlueShift.exe"
 #define PublishDir "..\dist\folder"
+#define MyAppId "{{A8F3C2E1-7B94-4D6A-9E21-5C0F8B3A1D77}"
+
+; 複製したのに AppId を変えていないときはビルドを止める
+#define TemplateAppId "{{A31CAAA6-8EA8-458F-8348-A91324E0EEC1}"
+#define LegacyTemplateAppId "{{B1E2D3C4-5A67-4890-B1C2-D3E4F5A60789}"
+#if MyAppName != "WinUiAppTemplate" && MyAppId == TemplateAppId
+  #error MyAppId がテンプレートのままです。新しい GUID に変更してください。
+#endif
+#if MyAppName != "SunriseWatcher" && MyAppId == LegacyTemplateAppId
+  #error MyAppId が旧テンプレートの値（SunriseWatcher が使用中）です。新しい GUID に変更してください。
+#endif
 
 [Setup]
-AppId={{A8F3C2E1-7B94-4D6A-9E21-5C0F8B3A1D77}
+AppId={#MyAppId}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}

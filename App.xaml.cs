@@ -1,8 +1,7 @@
-// v1.3.4
+// v1.4.0
 
 using Microsoft.UI.Xaml;
 using System;
-using System.Diagnostics;
 using WinUiShared;
 
 namespace App1
@@ -18,50 +17,25 @@ namespace App1
         public App()
         {
             InitializeComponent();
-            // × で MainWindow を破棄してもトレイ常駐を続ける（明示 Exit まで終了しない）
+            // × で MainWindow を破棄してもプロセスは継続する（トレイ常駐 / 明示 Exit まで終了しない）。
+            // ウィンドウ型でも同じ設定にし、終了は AppRuntimeBase.ExitApplication の 1 経路に揃える
             DispatcherShutdownMode = DispatcherShutdownMode.OnExplicitShutdown;
-            // 未処理例外は全アプリ共通の処理へ（lifetime.log に記録し、落とさずに続ける）
             UnhandledException += (_, e) => AppBootstrap.HandleUnhandledException(e);
+            // UI スレッド以外の例外と、待たれずに失敗した Task の例外も lifetime.log に残す
+            AppBootstrap.InstallGlobalExceptionLogging();
         }
 
-        internal static void ReportStartupError(string message)
+        protected override void OnLaunched(LaunchActivatedEventArgs args)
         {
-            Debug.WriteLine($"BlueShift error: {message}");
-        }
-
-        protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
-        {
-            // --cleanup-autostart / --sync-autostart は Program.Main（WinUI 起動前）で処理済み
-
             var settings = Settings.Load();
-            bool launchInBackground = AppBootstrap.HasCommandLineArg(AppBootstrap.BackgroundArg);
-            bool requestInteractiveShow = !launchInBackground;
 
-            if (!SingleInstance.TryBecomePrimaryInstance(requestInteractiveShow))
-            {
-                Exit();
+            // 単一インスタンス・自動起動の移行と同期は共通処理。二重起動なら null（既存の窓に表示を頼んで終了済み）
+            PrimaryLaunch? launch = AppBootstrap.BeginPrimaryLaunch(this, settings);
+            if (launch == null)
                 return;
-            }
 
-            StartupManager.MigrateFromLegacyIfNeeded();
-#if !DEBUG
-            // 起動時にログオンタスクを「今動いている exe」へ合わせ直す。
-            // Debug ビルドで行うと、インストール版の登録が bin\Debug の exe に書き換わってしまうため Release のみ。
-            // （設定画面で自動起動を切り替えたときや --sync-autostart の明示同期は Debug でも行う）
-            StartupManager.SyncAutostartWithSettings(settings.AutoStart, settings.UseLogonTask);
-#endif
-
-            try
-            {
-                // 起動判定で読んだ設定をそのまま渡す（以前は AppRuntime 内で読み直していた。同じ内容の 2 個目を作らない）
-                _runtime = new AppRuntime(this, settings);
-                _runtime.Start(launchInBackground, requestInteractiveShow);
-            }
-            catch (Exception ex)
-            {
-                ReportStartupError(ex.ToString());
-                throw;
-            }
+            _runtime = new AppRuntime(this, settings);
+            _runtime.Start(launch.LaunchInBackground, launch.RequestInteractiveShow);
         }
     }
 }

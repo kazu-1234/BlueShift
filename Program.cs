@@ -8,7 +8,8 @@ namespace App1
         [STAThread]
         static void Main(string[] args)
         {
-            // --exit（インストーラからの終了依頼）と WinUI の起動は共通処理（WinUiShared.AppBootstrap）
+            // --exit（インストーラからの終了依頼）、--sync-autostart / --cleanup-autostart、WinUI の起動は共通処理
+            // （WinUiShared.AppBootstrap）。このアプリ固有の引数（--reset-gamma）だけ HandlePreLaunchArgs で処理する
             AppBootstrap.RunMain(args, AppSetup.Profile, HandlePreLaunchArgs, () => new App());
         }
 
@@ -19,21 +20,6 @@ namespace App1
             if (AppBootstrap.HasArg(args, "--reset-gamma"))
             {
                 GammaController.ResetGamma();
-                return true;
-            }
-
-            // 自動起動登録だけ削除して終了（アプリ削除時の掃除用）。
-            if (AppBootstrap.HasArg(args, AppBootstrap.CleanupAutostartArg))
-            {
-                StartupManager.CleanupAutostartOnly();
-                return true;
-            }
-
-            // インストール直後など、設定に合わせてログオンタスクを現行 exe へ同期して終了。
-            if (AppBootstrap.HasArg(args, AppBootstrap.SyncAutostartArg))
-            {
-                var settings = Settings.Load();
-                StartupManager.SyncAutostartWithSettings(settings.AutoStart, settings.UseLogonTask);
                 return true;
             }
 
