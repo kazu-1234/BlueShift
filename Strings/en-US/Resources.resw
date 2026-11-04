@@ -349,6 +349,9 @@
   <data name="Update_Failed" xml:space="preserve">
     <value>Update failed: {0}</value>
   </data>
+  <data name="Update_HashMismatch" xml:space="preserve">
+    <value>The downloaded file does not match the release. Please update manually from the release page.</value>
+  </data>
   <data name="Tray_OpenSettings" xml:space="preserve">
     <value>Open settings</value>
   </data>
